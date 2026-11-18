@@ -1,0 +1,49 @@
+{
+  "name": "allprime",
+  "productName": "AllPrime",
+  "version": "1.0.0",
+  "description": "AllPrime - DNA / RNA / serbest dizi primer tasarimi, ozgulluk ve yaygin varyant kontrolu",
+  "main": "main.js",
+  "author": "Eren Kılınç",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^44.10.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.allprime.app",
+    "productName": "AllPrime",
+    "files": [
+      "main.js",
+      "preload.js",
+      "favoriler.js",
+      "renderer/**/*",
+      "!**/.claude",
+      "!**/.claude/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "extraResources": [
+      {
+        "from": "sidecar",
+        "to": "backend",
+        "filter": ["**/*", "!**/.claude", "!**/.claude/**/*"]
+      },
+      {
+        "from": "../annotations",
+        "to": "annotations",
+        "filter": ["**/*", "!**/.claude", "!**/.claude/**/*"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,94 @@
+<!-- AllPrime - Notice and Disclaimer (English)
+     Copyright (c) 2026 AllPrime eser sahibi - bkz. AUTHORS
+     GNU GPL surum 2 ya da (isteginize gore) daha sonraki bir surumu ile lisanslidir
+     (GPL-2.0-or-later); tam metin LICENSE dosyasinda. Lisans degistirme hakki
+     verir, ancak telif bildiriminin korunmasini sart kosar (GPL v2 md. 1 ve 2/a).
+     Keep in sync with terms.html. If you change either file, bump NOTICE_VERSION
+     in main.js - otherwise the notice will not be shown again. -->
+
+<h3>1. Purpose and scope</h3>
+<p>
+  AllPrime is a <b>primer design tool</b> developed for use within a laboratory.
+  It does not interpret patient data, does not produce a diagnostic result, and makes
+  no assessment about any individual.
+</p>
+<p>
+  This software is <b>not an in vitro diagnostic (IVD) medical device</b> and has not
+  undergone any conformity assessment for that purpose.
+</p>
+
+<h3>2. Validation is the user's responsibility</h3>
+<p>
+  Primers produced by this software should be <b>experimentally validated</b> by the
+  user's laboratory before any diagnostic use; the software has not been validated for that
+  purpose. This is a warning, not a condition of use.
+</p>
+<ul>
+  <li>The specificity scan and common-variant (dbSNP) avoidance are <b>supporting
+      checks</b>; they do not replace experimental validation.</li>
+  <li>Results depend on the <b>reference genome and annotation versions</b> in use.
+      GRCh37 (hg19) and GRCh38 (hg38) coordinates differ; the user must confirm which
+      build a reported coordinate belongs to.</li>
+  <li>Transcript selection relies on the user's input. The transcript reported
+      (NM_ accession and version) is the user's responsibility.</li>
+</ul>
+
+<h3>3. Disclaimer of warranty</h3>
+<p>
+  The software is provided <b>“as is”</b>, without warranty of any kind, express or
+  implied, including but not limited to fitness for a particular purpose. The user bears
+  responsibility for any outcome arising from its use.
+</p>
+
+<h3>4. Third-party components and licences</h3>
+<ul>
+  <li><b>primer3 / primer3-py</b> — GNU GPL v2 or later. This is the calculation engine.</li>
+  <li><b>PyInstaller</b> — GNU GPL v2 or later (with the Bootloader Exception)</li>
+  <li><b>pyfaidx</b> — BSD &middot; <b>Flask, Werkzeug, Jinja2</b> — BSD &middot;
+      <b>requests</b> — Apache-2.0 &middot; <b>flask-cors</b> — MIT</li>
+  <li><b>OpenSSL</b> (bundled with Python) — Apache-2.0</li>
+  <li><b>Electron</b> — MIT &middot; <b>Chromium</b> — BSD and other licences
+      (see <code>LICENSES.chromium.html</code> in the application folder)</li>
+</ul>
+<p>
+  The copyright notices and full licence texts of all components are in
+  <code>THIRD-PARTY-NOTICES.txt</code> in the application folder.
+</p>
+<p>
+  AllPrime is licensed under the GNU GPL version 2 or (at your option) any later version.
+  The licence texts are in the application folder (<code>LICENSE</code>,
+  <code>LICENSE-GPL-3.0.txt</code>).
+</p>
+
+<h3>5. Data sources</h3>
+<ul>
+  <li>Reference genome sequences — <b>Ensembl</b> (GRCh37 / GRCh38)</li>
+  <li>Transcript and exon structure — <b>UCSC refGene</b> (derived from NCBI RefSeq)</li>
+  <li>Canonical transcript flags — <b>NCBI MANE</b></li>
+  <li>Common variants — <b>UCSC snp151Common</b> (derived from NCBI dbSNP b151)</li>
+</ul>
+<p>
+  All computation runs on the local machine. If no local genome is configured, the
+  Ensembl REST API may be used to fetch sequence; in that case a genomic <b>coordinate</b>
+  is queried. If the transcript table is not configured either and the position is given
+  as a gene symbol, the <b>gene symbol</b> is queried as well. No patient data is transmitted.
+</p>
+
+<h3>6. Use in other laboratories</h3>
+<p>
+  This software was built around the workflow of the laboratory where it was developed
+  and <b>has not been validated in other laboratories</b>. Each laboratory using it is
+  <b>itself responsible</b> for experimentally validating the results under its own
+  conditions and for assessing it against its own quality system and applicable
+  regulations (e.g. in vitro diagnostic rules).
+</p>
+<p>
+  This clause is not a restriction on use: your rights to copy, modify and distribute the
+  software under the GNU GPL are unaffected.
+</p>
+
+<h3>7. Record of this notice</h3>
+<p>
+  The fact that this notice was shown is stored <b>only on this computer</b>, together with
+  the notice version and date. Nothing is transmitted anywhere.
+</p>

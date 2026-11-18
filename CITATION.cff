@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use AllPrime in your work, please cite it as below. / Çalışmanızda AllPrime'ı kullandıysanız lütfen aşağıdaki gibi atıf yapın."
+type: software
+title: "AllPrime: a desktop program for variant-specific PCR primer design"
+abstract: "AllPrime is a Windows desktop program that designs PCR primers for genomic variants, cDNA (c. notation), pasted sequences and deletion / duplication breakpoints, checks primer-pair specificity against a local human genome and avoids common variants (dbSNP). Calculations use primer3."
+authors:
+  - family-names: "Kılınç"
+    given-names: "Eren"
+    email: "eren.501kilinc@gmail.com"
+version: "1.0.0"
+license: "GPL-2.0-or-later"
+url: "https://allprime-app.github.io/"
+repository-code: "https://github.com/allprime-app/AllPrime"
+keywords:
+  - primer design
+  - PCR
+  - variant
+  - primer3
+  - specificity
+  - bioinformatics

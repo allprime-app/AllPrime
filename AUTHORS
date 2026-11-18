@@ -1,0 +1,52 @@
+AllPrime - Primer Tasarım Aracı
+===============================
+
+Eser sahibi / Author
+--------------------
+Eren Kılınç  <eren.501kilinc@gmail.com>
+
+Kaynak dosyalardaki telif başlıkları ("AllPrime eser sahibi - bkz. AUTHORS") bu
+dosyaya işaret eder.
+
+
+Telif ve lisans
+---------------
+Copyright (c) 2026 Eren Kılınç
+
+Bu yazılım GNU GPL sürüm 2 ya da (isteğinize göre) daha sonraki bir sürümü ile
+lisanslıdır (GPL-2.0-or-later). Hesaplama motoru olarak primer3'ü (primer3-py,
+GPL v2 veya sonrası) kullanır ve onunla birlikte dağıtılır. Paketli motor
+Apache-2.0 lisanslı bileşenler (requests, OpenSSL) de içerdiğinden, kurum dışına
+bunlarla uyumlu olan GPL v3 koşullarıyla verilir. Tam metinler: LICENSE (GPL v2)
+ve LICENSE-GPL-3.0.txt (GPL v3).
+
+Bunun pratik anlamı:
+
+  - Kendi kurumunuz içinde kullanmak hiçbir yükümlülük doğurmaz.
+  - Kurum dışına verildiğinde dağıtım gerçekleşmiş olur; tam kaynak kodun aynı
+    lisansla sunulması ve alıcının kopyalama/dağıtma hakkının kısıtlanmaması gerekir.
+  - Lisans, eseri DEĞİŞTİRME hakkı verir; ancak telif bildirimlerinin korunmasını
+    ve değiştirilen dosyalarda değişikliğin belirtilmesini ŞART KOŞAR (GPL v2
+    madde 1 ve 2/a; GPL v3 madde 4 ve 5/a). Telif bildirimini silip eseri kendi
+    adına geçirmek lisans ihlalidir.
+
+
+Üçüncü taraf bileşenler
+-----------------------
+primer3 / primer3-py    GNU GPL v2 veya sonrası
+PyInstaller             GNU GPL v2 veya sonrası (Bootloader Exception ile)
+pyfaidx                 BSD
+Flask, Werkzeug, Jinja2 BSD
+requests                Apache-2.0
+OpenSSL                 Apache-2.0 (Python ile birlikte gelir)
+flask-cors              MIT
+Electron                MIT
+Chromium                BSD ve diğer lisanslar (bkz. LICENSES.chromium.html)
+
+
+Veri kaynakları
+---------------
+Referans genom          Ensembl (GRCh37 / GRCh38)
+Transkript yapısı       UCSC refGene (NCBI RefSeq türevi)
+Kanonik transkript      NCBI MANE
+Yaygın varyantlar       UCSC snp151Common (NCBI dbSNP b151 türevi)

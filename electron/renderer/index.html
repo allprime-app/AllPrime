@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<!-- AllPrime - Primer Tasarim Araci
+     Copyright (c) 2026 AllPrime eser sahibi - bkz. AUTHORS
+     GNU GPL v2 veya sonrasi (GPL-2.0-or-later) - bkz. LICENSE -->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Yalnizca kendi dosyalarimiz ve yerel motor (inceleme bulgusu 7). Satir ici
+       stil acik: app.js birkac yerde style="..." uretiyor; satir ici SCRIPT kapali. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src http://127.0.0.1:*; base-uri 'none'; form-action 'none'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AllPrime</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="logo" src="logo.svg" alt="AllPrime" />
+      <div class="brand-text">
+        <h1 data-i18n="app.title">AllPrime</h1>
+        <p data-i18n="app.subtitle">Varyanta özgü primer tasarımı &middot; primer3 motoru</p>
+        <p class="brand-copy" data-i18n="app.copyright">&copy; 2026 Eren Kılınç &middot; GNU GPL v2 veya sonrası</p>
+      </div>
+    </div>
+    <div class="assembly">
+      <div class="seg lang-seg">
+        <button class="lang-btn active" data-lang="tr">TR</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <span class="assembly-label" data-i18n="genome.label">Referans Genom</span>
+      <div class="seg">
+        <button class="seg-btn active" data-asm="GRCh38">GRCh38</button>
+        <button class="seg-btn" data-asm="GRCh37">GRCh37</button>
+      </div>
+      <span id="genomeStatus" class="genome-status">●</span>
+      <button id="favAc" class="ayar-ac" data-i18n-title="fav.open.title"><span data-i18n="fav.open">★ Favoriler</span><span id="favSayac" class="fav-sayac hidden"></span></button>
+      <button id="ayarAc" class="ayar-ac" data-i18n="set.open">⚙ Ayarlar</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Arayuz ile motor surumu uyusmuyorsa burada gorunur (klasor kopyalamada
+         motor eski kalabiliyor); normalde gizli -->
+    <div id="engineWarn" class="engine-warn hidden"></div>
+    <!-- Secili derlemenin yerel genomu kullanilamiyorsa (kesik / yarim indeks / eslesmeyen indeks)
+         ya da surumu dogrulanamadiysa sebebi burada gorunur; motorun /health yanitindan gelir -->
+    <div id="genomeWarn" class="engine-warn genome-warn hidden" role="alert"></div>
+
+    <!-- Favoriler ekrani (2026-11-14, kullanici istegi): ust cubuktaki dugmeyle acilir, acikken
+         tasarim ekrani gizlenir (body.fav-modu). Liste yalniz bu bilgisayarda (electron/favoriler.js). -->
+    <section id="favEkrani" aria-labelledby="favBaslik">
+      <div class="ayar-ust">
+        <button class="ghost" id="favGeri" data-i18n="set.back">← Tasarıma dön</button>
+        <h2 id="favBaslik" data-i18n="fav.title">Favoriler</h2>
+        <span id="favOzet" class="msg"></span>
+      </div>
+      <div class="fav-arac">
+        <input id="favAra" type="text" data-i18n-ph="fav.search" autocomplete="off" />
+        <button class="ghost" id="favCsv" data-i18n="fav.csv">Listeyi CSV indir</button>
+      </div>
+      <p id="favMsg" class="msg"></p>
+      <div id="favListe"></div>
+    </section>
+
+    <!-- Ayarlar ekrani (2026-11-01): ust cubuktaki dugmeyle acilir, acikken tasarim
+         ekrani gizlenir (body.ayar-modu). Veri dosyalari, genom ve lisans eskiden ana
+         ekranin altindaki paneldeydi. Tercihler main.js'te, onay kaydiyla ayni dosyada. -->
+    <section id="ayarlarEkrani" aria-labelledby="ayarBaslik">
+      <div class="ayar-ust">
+        <button class="ghost" id="ayarGeri" data-i18n="set.back">← Tasarıma dön</button>
+        <h2 id="ayarBaslik" data-i18n="set.title">Ayarlar</h2>
+        <span id="ayarMsg" class="msg"></span>
+      </div>
+
+      <section class="panel ayar-bolum">
+        <h3 data-i18n="set.view">Görünüm</h3>
+        <div class="ayar-satir">
+          <div class="ayar-ad"><span data-i18n="set.theme">Tema</span><small data-i18n="set.theme.help"></small></div>
+          <div class="seg ayar-seg" data-ayar="tema">
+            <button class="ayar-btn" data-deger="dark" data-i18n="set.theme.dark">Koyu</button>
+            <button class="ayar-btn" data-deger="light" data-i18n="set.theme.light">Açık</button>
+            <button class="ayar-btn" data-deger="system" data-i18n="set.theme.system">Windows'a uy</button>
+          </div>
+        </div>
+        <div class="ayar-satir">
+          <div class="ayar-ad"><span data-i18n="set.zoom">Arayüz boyutu</span><small data-i18n="set.zoom.help"></small></div>
+          <!-- Dugme yazilari (%90 / 90%) dile gore app.js'te yazilir -->
+          <div class="seg ayar-seg" data-ayar="boyut">
+            <button class="ayar-btn" data-deger="0.9"></button>
+            <button class="ayar-btn" data-deger="1"></button>
+            <button class="ayar-btn" data-deger="1.1"></button>
+            <button class="ayar-btn" data-deger="1.25"></button>
+            <button class="ayar-btn" data-deger="1.5"></button>
+          </div>
+        </div>
+        <div class="ayar-satir">
+          <div class="ayar-ad"><span data-i18n="set.lang">Dil</span><small data-i18n="set.lang.help"></small></div>
+          <div class="seg ayar-seg" data-ayar="dil">
+            <button class="ayar-btn" data-deger="tr">Türkçe</button>
+            <button class="ayar-btn" data-deger="en">English</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel ayar-bolum">
+        <h3 data-i18n="set.lab">Laboratuvar varsayılanları</h3>
+        <p class="hint" data-i18n="set.lab.intro"></p>
+        <div class="ayar-satir">
+          <div class="ayar-ad"><span data-i18n="set.asm">Açılıştaki referans genom</span><small data-i18n="set.asm.help"></small></div>
+          <div class="seg ayar-seg" data-ayar="genom">
+            <button class="ayar-btn" data-deger="GRCh38">GRCh38</button>
+            <button class="ayar-btn" data-deger="GRCh37">GRCh37</button>
+          </div>
+        </div>
+        <div class="ayar-satir">
+          <div class="ayar-ad"><label for="ayar_pcr_max" data-i18n="adv.pcr_max"></label><small data-i18n="set.pcrMax.help"></small></div>
+          <div class="ayar-sayi"><input id="ayar_pcr_max" type="number" min="100" max="100000" step="50" /> <span>bp</span></div>
+        </div>
+        <div class="ayar-satir ust-hiza">
+          <div class="ayar-ad"><span data-i18n="set.params">PCR koşulları ve primer parametreleri</span><small id="labYardim"></small></div>
+          <div>
+            <div id="labOzet"></div>
+            <div class="ayar-dugmeler">
+              <button class="ghost" id="labKaydet" data-i18n="set.params.save"></button>
+              <button class="ghost" id="labSifirla" data-i18n="set.params.reset"></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel ayar-bolum" id="ayarVeri">
+        <h3 data-i18n="set.data">Veri dosyaları ve genom</h3>
+        <details class="genome-panel" id="dlPanel">
+          <summary data-i18n="dl.summary">Veri dosyaları (indirme)</summary>
+          <p class="hint" data-i18n="dl.intro"></p>
+          <p class="hint" id="dlRoot"></p>
+          <div id="dlList" class="dl-list"></div>
+        </details>
+        <details class="genome-panel">
+          <summary data-i18n="gp.summary">Genom dosyaları (yerel FASTA)</summary>
+          <p class="hint" data-i18n="gp.help"></p>
+          <div class="genome-row">
+            <span>GRCh38</span>
+            <input id="path_GRCh38" type="text" placeholder="C:\...\GRCh38.fa" readonly />
+            <button class="ghost" data-pick="GRCh38" data-i18n="gp.pick">Seç</button>
+          </div>
+          <p class="hint genome-satir hint-warn hidden" id="gwarn_GRCh38"></p>
+          <div class="genome-row">
+            <span>GRCh37</span>
+            <input id="path_GRCh37" type="text" placeholder="C:\...\GRCh37.fa" readonly />
+            <button class="ghost" data-pick="GRCh37" data-i18n="gp.pick">Seç</button>
+          </div>
+          <p class="hint genome-satir hint-warn hidden" id="gwarn_GRCh37"></p>
+        </details>
+      </section>
+
+      <section class="panel ayar-bolum" id="ayarHakkinda">
+        <h3 data-i18n="set.about">Hakkında</h3>
+        <dl class="hakkinda" id="hakkinda"></dl>
+        <details class="genome-panel" id="licensePanel">
+          <summary data-i18n="license.summary">Lisans ve sorumluluk bildirimi</summary>
+          <div class="terms-box terms-inline" id="licenseBox"></div>
+        </details>
+      </section>
+    </section>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="dna" data-i18n="tab.dna">DNA &middot; genomik</button>
+      <button class="tab" data-tab="rna" data-i18n="tab.rna">RNA &middot; cDNA</button>
+      <button class="tab" data-tab="seq" data-i18n="tab.seq">Dizi</button>
+      <button class="tab" data-tab="bp" data-i18n="tab.bp">Kırılma noktası</button>
+      <button class="tab" data-tab="eval" data-i18n="tab.eval">Değerlendir</button>
+    </div>
+
+    <section class="panel form-panel" id="panel-dna">
+      <div class="row">
+        <div class="field">
+          <label data-i18n="dna.gene">Gen (opsiyonel)</label>
+          <input id="gene" type="text" data-i18n-ph="dna.gene.ph" autocomplete="off" />
+          <small data-i18n="dna.gene.help">Kromozom boşsa gen adından bulunur.</small>
+        </div>
+        <div class="field">
+          <label data-i18n="dna.chrom">Kromozom</label>
+          <input id="chrom" type="text" data-i18n-ph="dna.chrom.ph" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label data-i18n="dna.pos" data-i18n-title="dna.pos.title">Genomik Koordinat (varyant)</label>
+          <input id="position" type="text" data-i18n-ph="dna.pos.ph" data-i18n-title="dna.pos.title" autocomplete="off" />
+          <small data-i18n="dna.pos.hint"></small>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel form-panel hidden" id="panel-rna">
+      <div class="row">
+        <div class="field">
+          <label data-i18n="rna.acc">Transkript (NM_)</label>
+          <input id="acc" type="text" data-i18n-ph="rna.acc.ph" autocomplete="off" />
+          <small data-i18n="rna.acc.help">Sürüm numarası yok sayılır.</small>
+        </div>
+        <div class="field">
+          <label data-i18n="rna.search">Gen ile ara (opsiyonel)</label>
+          <div class="inline">
+            <input id="gene_rna" type="text" data-i18n-ph="dna.gene.ph" autocomplete="off" />
+            <button id="findTxBtn" class="ghost" data-i18n="rna.find">Bul</button>
+          </div>
+          <small data-i18n="rna.search.help">Genin transkriptlerini listeler, MANE Select işaretlenir.</small>
+        </div>
+      </div>
+
+      <div id="txList" class="tx-list hidden"></div>
+
+      <div class="row">
+        <div class="field">
+          <label data-i18n="mode.label">Tasarım tipi</label>
+          <div class="seg">
+            <button class="rna-mode-btn active" data-rmode="variant" data-i18n="rna.mode.variant">Varyant (c.)</button>
+            <button class="rna-mode-btn" data-rmode="skipping" data-i18n="rna.mode.skip">Ekson atlama testi</button>
+          </div>
+        </div>
+        <div class="field" id="field-cpos">
+          <label data-i18n="rna.cpos">c. Koordinatı</label>
+          <input id="c_position" type="text" data-i18n-ph="rna.cpos.ph" autocomplete="off" />
+        </div>
+        <div class="field field-exon hidden" id="field-exon">
+          <label for="skip_exon" data-i18n="rna.exon">Atlanacak eksonlar</label>
+          <p class="exon-ipucu" id="exonHint"></p>
+          <div class="exon-kodnot hidden" id="exonKodNot" role="status"></div>
+          <div class="exon-kutu hidden" id="exonBox" role="group"></div>
+          <div class="exon-aralik">
+            <span data-i18n="rna.exon.range">ya da aralık yazın:</span>
+            <input id="skip_exon" type="text" data-i18n-ph="rna.exon.ph" autocomplete="off" />
+          </div>
+          <div class="exon-ozet hidden" id="exonSummary" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div class="opt-box" id="box-junction">
+        <label class="check">
+          <input id="junction_overlap" type="checkbox" />
+          <span data-i18n="rna.junction.label">Primer ekson sınırının <b>üzerine</b> otursun</span>
+        </label>
+        <p class="hint" data-i18n="rna.junction.help"></p>
+      </div>
+
+      <div class="opt-box hidden" id="box-skip">
+        <p class="hint" data-i18n="rna.skip.help"></p>
+      </div>
+    </section>
+
+    <section class="panel form-panel hidden" id="panel-seq">
+      <div class="row">
+        <div class="field">
+          <label data-i18n="mode.label">Tasarım tipi</label>
+          <div class="seg">
+            <button class="seq-mode-btn active" data-smode="single" data-i18n="seq.mode.single">Tek dizi</button>
+            <button class="seq-mode-btn" data-smode="pair" data-i18n="seq.mode.pair">İki dizi (F / R bölgesi)</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="seq-single">
+        <div class="field">
+          <label data-i18n="seq.single.label">Dizi</label>
+          <textarea id="seq_single" rows="7" spellcheck="false" data-i18n-ph="seq.single.ph"></textarea>
+          <small data-i18n="seq.single.help"></small>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label data-i18n="seq.target">Hedef konum (opsiyonel)</label>
+            <input id="seq_target" type="text" data-i18n-ph="seq.target.ph" autocomplete="off" />
+            <small data-i18n="seq.target.help"></small>
+          </div>
+        </div>
+      </div>
+
+      <div id="seq-pair" class="hidden">
+        <div class="row row-2">
+          <div class="field">
+            <label data-i18n="seq.fwd.label">Forward primer bu dizinin içinden seçilsin</label>
+            <textarea id="seq_fwd" rows="6" spellcheck="false" data-i18n-ph="seq.fwd.ph"></textarea>
+          </div>
+          <div class="field">
+            <label data-i18n="seq.rev.label">Reverse primer bu dizinin içinden seçilsin</label>
+            <textarea id="seq_rev" rows="6" spellcheck="false" data-i18n-ph="seq.rev.ph"></textarea>
+          </div>
+        </div>
+        <div class="opt-box">
+          <label class="check">
+            <input id="ignore_product_size" type="checkbox" />
+            <span data-i18n="seq.free.label"></span>
+          </label>
+          <p class="hint" data-i18n="seq.free.help1"></p>
+          <p class="hint" data-i18n="seq.free.help2"></p>
+        </div>
+
+        <details class="advanced">
+          <summary data-i18n="seq.gap.summary">İki dizi arası mesafe</summary>
+          <div class="adv-inline">
+            <div class="field">
+              <label data-i18n="seq.gap.label">Mesafe (bp)</label>
+              <input id="seq_gap" type="number" min="0" value="0" />
+            </div>
+            <p class="hint" data-i18n="seq.gap.help"></p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+
+    <section class="panel form-panel hidden" id="panel-bp">
+      <p class="hint" data-i18n="bp.intro"></p>
+      <div class="row">
+        <div class="field">
+          <label data-i18n="mode.label">Tasarım tipi</label>
+          <div class="seg">
+            <button class="bp-mode-btn active" data-bpmode="del" data-i18n="bp.mode.del">Delesyon</button>
+            <button class="bp-mode-btn" data-bpmode="dup" data-i18n="bp.mode.dup">Duplikasyon</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label data-i18n="dna.chrom">Kromozom</label>
+          <input id="bp_chrom" type="text" data-i18n-ph="dna.chrom.ph" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label data-i18n="bp.start">Başlangıç</label>
+          <input id="bp_start" type="text" data-i18n-ph="bp.start.ph" autocomplete="off" />
+          <small data-i18n="bp.start.help"></small>
+        </div>
+        <div class="field">
+          <label data-i18n="bp.end">Bitiş</label>
+          <input id="bp_end" type="text" data-i18n-ph="bp.end.ph" autocomplete="off" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label data-i18n="bp.margin">Kırılma noktası belirsizliği (± bp)</label>
+          <input id="bp_margin" type="number" min="0" value="0" />
+          <small data-i18n="bp.margin.help"></small>
+        </div>
+      </div>
+      <div class="opt-box">
+        <label class="check">
+          <input id="bp_control" type="checkbox" />
+          <span data-i18n="bp.control.label"></span>
+        </label>
+        <p class="hint" data-i18n="bp.control.help"></p>
+      </div>
+      <p class="hint" id="bp-help-del" data-i18n="bp.help.del"></p>
+      <p class="hint hidden" id="bp-help-dup" data-i18n="bp.help.dup"></p>
+    </section>
+
+    <section class="panel form-panel hidden" id="panel-eval">
+      <p class="hint" data-i18n="ev.intro"></p>
+
+      <div class="row row-2">
+        <div class="field">
+          <label data-i18n="ev.mode.label">Primer tipi</label>
+          <div class="seg">
+            <button class="ev-mode-btn active" data-emode="dna" data-i18n="ev.mode.dna">DNA (genomik)</button>
+            <button class="ev-mode-btn" data-emode="cdna" data-i18n="ev.mode.cdna">RNA / cDNA</button>
+          </div>
+          <small data-i18n="ev.mode.help"></small>
+        </div>
+        <div class="field hidden" id="field-ev-acc">
+          <label data-i18n="ev.acc">Transkript (NM_)</label>
+          <div class="inline">
+            <input id="ev_acc" type="text" data-i18n-ph="rna.acc.ph" autocomplete="off" />
+            <button id="evFindTxBtn" class="ghost" data-i18n="ev.acc.find">Gen ile bul</button>
+          </div>
+          <small data-i18n="ev.acc.help"></small>
+        </div>
+      </div>
+
+      <div id="evTxList" class="tx-list hidden"></div>
+
+      <div class="row row-2">
+        <div class="field">
+          <label data-i18n="ev.fwd">Forward primer (5'&rarr;3')</label>
+          <input id="ev_fwd" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="AGAAGCCGTGAGAAGTGA" />
+        </div>
+        <div class="field">
+          <label data-i18n="ev.rev">Reverse primer (5'&rarr;3')</label>
+          <input id="ev_rev" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="ATGATCTAGGTTGTGGTCCT" />
+          <small data-i18n="ev.rev.help"></small>
+        </div>
+      </div>
+      <div class="row row-2">
+        <div class="field">
+          <label data-i18n="ev.target"></label>
+          <input id="ev_hedef" type="text" spellcheck="false" autocomplete="off" data-i18n-ph="ev.target.ph" />
+          <small data-i18n="ev.target.help"></small>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="evalBtn" class="primary" data-i18n="ev.run">Değerlendir</button>
+        <span id="evalMsg" class="msg"></span>
+      </div>
+      <div id="evalResult"></div>
+    </section>
+
+    <section class="panel form-panel" id="sharedPanel">
+      <div class="opt-box" id="box-snp">
+        <label class="check">
+          <input id="avoid_common_snps" type="checkbox" checked />
+          <span data-i18n="snp.label"></span>
+        </label>
+        <p class="hint" data-i18n="snp.help"></p>
+        <p class="hint" id="snpStatus"></p>
+      </div>
+
+      <details class="advanced">
+        <summary data-i18n="adv.summary">Gelişmiş parametreler</summary>
+        <div class="adv-grid">
+          <div class="field"><label data-i18n="adv.pcr_max" data-i18n-title="adv.pcr_max.title"></label><input id="pcr_max" type="number" min="100" max="100000" step="50" data-i18n-title="adv.pcr_max.title" /></div>
+          <div class="field"><label data-i18n="adv.product_min_gc" data-i18n-title="adv.product_gc.title"></label><input id="product_min_gc" type="number" min="0" max="100" step="1" data-i18n-title="adv.product_gc.title" /></div>
+          <div class="field"><label data-i18n="adv.product_max_gc" data-i18n-title="adv.product_gc.title"></label><input id="product_max_gc" type="number" min="0" max="100" step="1" data-i18n-title="adv.product_gc.title" /></div>
+          <div class="field"><label data-i18n="adv.product_size_min"></label><input id="product_size_min" type="number" min="1" max="100000" /></div>
+          <div class="field"><label data-i18n="adv.product_size_max"></label><input id="product_size_max" type="number" min="1" max="100000" /></div>
+          <div class="field"><label data-i18n="adv.min_dist_from_variant"></label><input id="min_dist_from_variant" type="number" min="0" max="10000" /></div>
+          <div class="field"><label data-i18n="adv.primer_min_size"></label><input id="primer_min_size" type="number" min="1" max="36" /></div>
+          <div class="field"><label data-i18n="adv.primer_opt_size"></label><input id="primer_opt_size" type="number" min="1" max="36" /></div>
+          <div class="field"><label data-i18n="adv.primer_max_size"></label><input id="primer_max_size" type="number" min="1" max="36" /></div>
+          <div class="field"><label data-i18n="adv.primer_min_tm"></label><input id="primer_min_tm" type="number" min="0" max="100" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.primer_max_tm"></label><input id="primer_max_tm" type="number" min="0" max="100" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.primer_max_tm_diff"></label><input id="primer_max_tm_diff" type="number" min="0" max="100" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.primer_min_gc"></label><input id="primer_min_gc" type="number" min="0" max="100" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.primer_max_gc"></label><input id="primer_max_gc" type="number" min="0" max="100" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.primer_gc_clamp"></label><input id="primer_gc_clamp" type="number" min="0" max="5" /></div>
+          <div class="field"><label data-i18n="adv.primer_max_end_gc" data-i18n-title="adv.primer_max_end_gc.title"></label><input id="primer_max_end_gc" type="number" min="0" max="5" /></div>
+          <div class="field"><label data-i18n="adv.primer_max_poly_x"></label><input id="primer_max_poly_x" type="number" min="0" max="36" /></div>
+          <div class="field"><label data-i18n="adv.salt_monovalent"></label><input id="salt_monovalent" type="number" min="0.01" max="10000" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.salt_divalent"></label><input id="salt_divalent" type="number" min="0" max="1000" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.dntp_conc"></label><input id="dntp_conc" type="number" min="0" max="1000" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.dna_conc"></label><input id="dna_conc" type="number" min="0.01" max="1000000" step="0.1" /></div>
+          <div class="field"><label data-i18n="adv.dmso_conc"></label><input id="dmso_conc" type="number" min="0" max="20" step="0.5" /></div>
+          <div class="field"><label data-i18n="adv.num_return"></label><input id="num_return" type="number" min="1" max="1000" /></div>
+        </div>
+        <div class="adv-varsayilan">
+          <button class="ghost" id="labKaydetAdv" data-i18n="set.params.saveHere"></button>
+          <span class="hint" data-i18n="set.params.where"></span>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button id="designBtn" class="primary" data-i18n="act.design">Primer Tasarla</button>
+        <button id="exportBtn" class="ghost" disabled data-i18n="act.export">CSV indir</button>
+        <label class="check" data-i18n-title="act.autoSpec.title">
+          <input id="autoSpec" type="checkbox" checked />
+          <span data-i18n="act.autoSpec">Özgüllüğü otomatik kontrol et</span>
+        </label>
+        <span id="msg" class="msg"></span>
+      </div>
+    </section>
+
+    <section id="results" class="panel results-panel hidden">
+      <div id="summary" class="summary"></div>
+      <div id="pairs" class="pairs"></div>
+    </section>
+
+    <!-- GPL v2 md. 2(c): acilista telif + garanti yok + yeniden dagitim kosulu + lisans
+         metninin yeri. Program bunu gosterdigi icin degistirilmis surumler de gostermek
+         zorunda; eskiden eser sahibinin adi ekranda hic yoktu (2026-10-31). Lisans metni
+         Ayarlar > Hakkinda'da; bildirimdeki baglanti oraya goturur. Ayarlar acikken de
+         gorunur kalir. -->
+    <footer class="app-footer" data-i18n="app.notice"></footer>
+  </main>
+
+  <script src="i18n.js"></script>
+  <script src="csv.js"></script>
+  <script src="yon.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

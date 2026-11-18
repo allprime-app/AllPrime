@@ -1,0 +1,602 @@
+ALLPRIME - PRIMER TASARIM ARACI
+===============================
+
+SİSTEM GEREKSİNİMİ
+------------------
+Aşağıdaki değerler 24 mantıksal çekirdekli, 16 GB RAM'li bir Windows 11 bilgisayarda
+ölçülmüştür (Electron arayüzü, motor ve tarama işçileri birlikte). Program ayrıca 4 GB
+RAM'li bir Windows 10 bilgisayarda kullanıldı: DNA, RNA ve Kırılma noktası (duplikasyon)
+tasarımları sorunsuz çalıştı, genom taraması daha uzun sürdü. Orada süre ve bellek
+ölçülmedi; ölçülmeyen değerler satırlarda öyle yazılmıştır.
+
+ - İşletim sistemi : Windows 10 ya da 11, 64 bit (arayüz Electron 44'tür, Windows 10
+                     ve üstünü ister). Denenen: Windows 11 ve Windows 10.
+ - RAM             : Önerilen 8 GB, en az 4 GB. Ölçülen: açılışta ve beklerken yaklaşık
+                     0,4 GB; "En iyi Özgül çift" taramasında (12 işçi) en çok yaklaşık
+                     2,1 GB ayrılır (çalışma kümesi yaklaşık 2,0 GB); tarama bitince
+                     yaklaşık 0,6 GB'a iner. İşçi başına yaklaşık 130 MB ayrılır; işçi
+                     sayısı az olan bilgisayarda tepe daha düşük olur. 4 GB RAM'li bir
+                     Windows 10 bilgisayarda çalıştı; orada bellek ölçülmedi.
+ - İşlemci         : Tarama işçi sayısı, çekirdek sayısı ile 12'nin küçüğüdür. Çekirdek
+                     azaldıkça tarama uzar. 24 çekirdekte (12 işçi) bir hedefin en iyi
+                     Özgül çift taraması 9-52 sn sürdü (TP53 24 sn, CYP21A2 9 sn, SORD
+                     26 sn, GABARAP 52 sn). Daha az çekirdekte süre ölçülmedi.
+ - Disk            : Her genom derlemesi için yaklaşık 3,3 GB; iki derleme ve bütün
+                     veriler için yaklaşık 7,0 GB, dolayısıyla 8 GB boş yer önerilir.
+                     Kalemler:
+                       Kurulu uygulama (AllPrime.exe, arayüz, motor, kaynak kodu) : 0,4 GB
+                       Genom FASTA (.fa), her derleme                              : 3,15 GB
+                       Genom indeksi (.fai), her derleme                           : birkaç KB
+                       dbSNP yaygın varyant dizini, her derleme                    : 0,14 GB
+                       refGene (iki derleme) + MANE özeti, toplam                  : 0,02 GB
+ - Ağ              : Veri dosyaları bilgisayarda olduktan sonra çalışmak için internet
+                     gerekmez; yalnızca dosyaları indirirken gerekir.
+
+
+KURULUM
+-------
+1. Bu klasörün tamamını bilgisayara kopyalayın (örn. C:\AllPrime\).
+
+   ÖNEMLİ: Klasörü DİSKİN KÖKÜNE YAKIN bir yere açın/kopyalayın.
+   Program içindeki en derin dosya yolu 142 karakter; Windows'un 260 karakter
+   sınırı nedeniyle çok derin bir klasöre (örn. Masaüstü\Yeni klasör\Yedek\...)
+   açarsanız "yol çok uzun" hatası alır ve dosyalar eksik çıkar.
+   C:\AllPrime\ gibi kısa bir yol her zaman güvenlidir.
+2. Veri dosyalarını edinin. İKİ YOL VAR:
+
+   a) UYGULAMA İÇİNDEN İNDİRİN (kolay yol)
+      Programı açın, sağ üstteki "⚙ Ayarlar" düğmesine basın, "Veri dosyaları
+      (indirme)" bölümünü açın ve eksik olanların yanındaki "İndir" düğmesine basın. Genomlar Ensembl'den,
+      diğerleri UCSC/NCBI'dan iner. İndirme kaldığı yerden devam eder; bağlantı
+      koparsa baştan başlamaz.
+
+      Süre bağlantınıza bağlıdır. Yavaş bir hatta (~0,4 MB/sn) tüm dosyalar
+      1,5-2 saat sürebilir; hızlı ağda çok daha kısadır. Arka planda çalışır.
+
+   b) DOSYALARI ELLE KOPYALAYIN (yavaş bağlantıda daha hızlı)
+      Genom dosyalarını "genomes" klasörü olarak BU KLASÖRÜN İÇİNE kopyalayın:
+
+       AllPrime\
+         AllPrime.exe
+         genomes\                              <-- buraya
+           Homo_sapiens.GRCh37.dna.primary_assembly.fa
+           Homo_sapiens.GRCh37.dna.primary_assembly.fa.fai
+           Homo_sapiens.GRCh38.dna.primary_assembly.fa
+           Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai
+         resources\
+
+   Genom dosyaları boyutları nedeniyle (~3 GB her biri) pakete dahil edilmemiştir.
+   .fa dosyalarının yanındaki .fai indeks dosyalarını da kopyalamayı unutmayın.
+
+3. "AllPrime.exe" ile çalıştırın.
+   İlk açılışta pencerenin gelmesi 20–50 saniye sürebilir; bu sırada ekranda bir şey
+   görünmez. Bekleyin, programı ikinci kez başlatmayın. Sonraki açılışlar birkaç saniye
+   sürer.
+
+Program açılışta genomes klasörünü kendiliğinden bulur. Bulamazsa "⚙ Ayarlar"
+ekranındaki "Genom dosyaları (yerel FASTA)" bölümünden elle tanıtabilirsiniz; seçim
+kaydedilir. Program tanıtılan genomu kullanmadan önce denetler: dosya indeksiyle uyuşmalı,
+yarım kopyalanmamış olmalı ve 1–22, X, Y ile MT kromozomları seçilen derlemenin bilinen
+uzunluğunda bulunmalıdır. Eksik ya da kesik bir genom kullanılmaz (yanlışlıkla "özgül"
+sonucu vermesin diye); Ayarlar'da nedeni yazılır. Bu durumda genomu yeniden indirin ya da
+yeniden kopyalayın. Mitokondri dizisi iki derlemede de rCRS (16.569 bp) olmalıdır; UCSC
+hg19'un eski chrM dizisi (16.571 bp) kabul edilmez. Sıkıştırılmış FASTA (.gz) da
+tanıtılamaz: dosyayı açıp (.fa) tanıtın; Veri dosyaları panelinden indirilen genom zaten
+açılmış gelir.
+
+Genom tanıtılmazsa program Ensembl REST API'ye düşer. Bu internet gerektirir ve
+yavaştır; hasta verisi gönderilmez, genomik koordinat sorgulanır (transkript tablosu da
+yoksa ve konum gen sembolüyle verildiyse gen sembolü de sorgulanır).
+
+
+AÇILIŞ BİLGİLENDİRMESİ VE DİL
+-----------------------------
+Program ilk açılışta bilgilendirme ve sorumluluk bildirimini gösterir. Ekran onay
+istemez: metni okuyup "Anladım, devam et" düğmesine basarsınız. Bildirimin gösterildiği,
+bildirim metni sürümü ve tarihle birlikte yalnızca bu bilgisayarda saklanır (kullanıcı
+adı ve bilgisayar adı saklanmaz); dışarıya hiçbir veri gitmez. Bildirim metni
+güncellenirse bir kez daha gösterilir.
+
+Aynı ekrandan dili seçersiniz: Türkçe veya İngilizce. Sonradan değiştirmek için
+üst bardaki TR / EN düğmesini ya da "⚙ Ayarlar"ı kullanın. Arayüzün tamamı, hata
+mesajları, uyarı notları ve CSV başlıkları seçilen dilde gelir.
+
+CSV dosyalarının (DNA, RNA, Kırılma noktası) son iki sütunu "Derleme" ve "Kromozom"dur.
+RNA sekmesi her zaman GRCh38 kullandığı için RNA dosyasında derleme GRCh38 yazar. İki
+dizi kipinde mesafe bilinmiyorsa "Amplikon_Not" sütunu bunu belirtir; delesyonda
+"IkinciBant_Durum" sütunu normal alel bandının ürün sınırınıza göre durumunu yazar.
+
+Bildirim metnine daha sonra ulaşmak isterseniz "⚙ Ayarlar" ekranında, Hakkında
+bölümündeki "Lisans ve sorumluluk bildirimi"ni açın.
+
+
+AYARLAR
+-------
+Sağ üstteki "⚙ Ayarlar" düğmesi ayarlar ekranını açar; "← Tasarıma dön" ya da Esc
+kapatır. Seçimler yalnızca bu bilgisayarda saklanır.
+
+ - Tema          : Koyu, Açık ya da Windows'a uy (Windows'un açık / koyu ayarını
+                   izler). Açılış bilgilendirme ekranı da seçilen temayla gelir.
+ - Arayüz boyutu : %90 - %150. Yazılar, düğmeler ve tablolar birlikte büyür
+                   (projektör, yüksek çözünürlüklü ekran). Küçük pencerede tablolar
+                   kartın içinde yana kayar. Klavyeden Ctrl + Artı bir adım büyütür,
+                   Ctrl + Eksi küçültür, Ctrl + 0 %100'e döndürür; seçim burada da
+                   görünür ve saklanır.
+ - Laboratuvar varsayılanları:
+                   Açılıştaki referans genom, çoğaltılabilen en uzun ürün ve gelişmiş
+                   parametreler (Mg²⁺, tuz, dNTP, DMSO, primer boyu, Tm ...). Değerleri
+                   "Gelişmiş parametreler"e girip "Bu değerleri laboratuvar varsayılanı
+                   yap" düğmesine basın; program her açılışta bu değerlerle başlar.
+                   "Fabrika değerlerine dön" kaydı siler. Üst çubuktaki genom seçimi
+                   yalnızca o oturum içindir.
+ - Veri dosyaları ve genom: indirme ve yerel FASTA seçimi.
+ - Hakkında      : sürüm, yüklü veri dosyaları, veri kaynakları ve lisans metni.
+
+
+KULLANIM
+--------
+DNA · genomik sekmesi
+   Genomik koordinat verilir, primerler doğrudan genom üzerinde tasarlanır.
+
+   Konum kutusuna iki biçim yazılabilir:
+     - Tek koordinat      : 7676154            (nokta varyant)
+     - Aralık             : 7676154-7676208    (varyantın tamamı)
+
+   Varyant birkaç bazdan uzunsa (indel, delins) ARALIK yazın. Tek koordinat
+   verirseniz araç varyantın kaç baz uzandığını bilemez ve primer varyantın
+   içine düşebilir; o primer varyantlı alele bağlanmaz, heterozigot örnek
+   homozigot görünür. Ölçüldü: 120 bp'lik bir delesyonun yalnızca başlangıcı
+   verildiğinde 20 primerin 5'i varyantın içine düşüyordu.
+
+   Aralık verince primerler aralığın tamamının ve iki yanda "varyanta min
+   uzaklık" kadar payın dışına konur. "chr2:50,000,001-50,000,300" biçimi de
+   kabul edilir. Varyant tek bir ürüne sığmayacak kadar uzunsa bu söylenir.
+
+   Delesyon ve duplikasyonda Kırılma noktası sekmesi daha uygundur: primerleri
+   bölgenin dışına koyar, mutant ve normal bantları birlikte verir.
+
+   PRİMER ADLARI (F / R): Forward ve Reverse, genin okuma yönüne göre adlandırılır.
+   Eksi (−) iplikteki genlerde (TP53, BRCA1 ...) Forward, koordinatı büyük olan
+   primerdir; ürün dizisi de genin yönünde gösterilir. Forward ile yapılan Sanger
+   okuması c. dizisiyle aynı yönde, Reverse ile yapılan okuma ters tümleyendir.
+   Sonuçların üstündeki not bunu söyler; özet satırında genin ipliği yazar.
+   Kırılma noktası sekmesi de aynı kuralla çalışır; pozisyonlar her zaman
+   genomiktir. Değerlendir sekmesinde de çiftin ürünü Forward'dan başlar
+   (bkz. Değerlendir sekmesi).
+
+   GİRDİĞİNİZ KONUM: "Ürün dizisi" düğmesinde girdiğiniz koordinat ayrı renkle
+   işaretlenir; lejantta konum ve ürünün kaçıncı bazı olduğu yazar. Aralık
+   girdiyseniz aralığın tamamı işaretlenir. Eksi iplikteki gende dizi genin
+   yönünde gösterildiği için işaretli baz, genomun + ipliğindeki bazın
+   tümleyenidir. RNA sekmesinde c. konumu, Dizi sekmesinde hedef işaretlenir.
+   Kırılma noktası sekmesinde birleşim çizgisinin iki yanındaki bazlar, dış
+   primerli küçük duplikasyonda girilen bölge işaretlenir. Ekson atlama testi,
+   hedefsiz dizi ve iki dizi modunda tek bir konum olmadığı için işaret yoktur.
+
+RNA · cDNA sekmesi
+   Transkript kodu (NM_) verilir, şablon intronsuz cDNA'dır. Sürüm numarası
+   yok sayılır. NM kodunu bilmiyorsanız gen sembolü ile arayabilirsiniz;
+   MANE Select transkript işaretli gelir. Bu sekme transkripti her zaman
+   GRCh38 genomundan kurar (MANE GRCh38 ile gelir); üstte GRCh37 seçili
+   olsa da gösterilen konumlar GRCh38'dir. Kodlayan bölgesi tutarsız
+   görünen transkriptte (ör. TNNI3) hizalama uyarısı çıkar: c. ve ekson
+   numaraları NM'ninkinden kayabilir; NM dizisiyle karşılaştırın ya da DNA
+   sekmesinde genomik koordinatla tasarlayın.
+
+   - Varyant (c.)        : c.1234 / c.-45 / c.*120 gösterimleri desteklenir.
+                           c.524A>G gibi yazılan referans baz transkriptteki
+                           bazla uyuşmazsa sonuçta uyarı çıkar (boşluklu
+                           yazım ve Değerlendir'in RNA modundaki hedefi dahil).
+                           İntronik konumlar (c.123+45) mRNA'da bulunmadığı için
+                           kabul edilmez; onlar için DNA sekmesini kullanın.
+
+   - Ekson atlama testi  : Atlanacak eksonların iki yanındaki eksonlara primer
+                           konur. Transkript kodunu girince eksonlar düğme olarak
+                           çıkar: tıklayarak seçin (Shift+tıklama aralık seçer) ya
+                           da kutuya yazın: 5, 4-6 (bitişik), 4,6 (bitişik değil).
+                           İlk ve son ekson seçilemez. Normal transkript uzun,
+                           atlanmış transkript kısa ürün verir; fark atlanan
+                           eksonların toplam uzunluğu kadardır. Bitişik olmayan
+                           eksonlarda her ekson tek başına ve hepsi birlikte
+                           atlanırsa görülecek bantlar ayrı ayrı gösterilir;
+                           birbirine çok yakın bantlar (fark 20 bp'nin ya da büyük
+                           bandın %5'inin altında; bu eşik bir tasarım seçimidir)
+                           uyarıyla işaretlenir. Özette okuma çerçevesinin
+                           korunup korunmadığı da yazar.
+
+RNA modunda her çift için gDNA'daki ürün boyu da gösterilir; genomik DNA
+kontaminasyonunu jelde ayırt etmek için kullanılır.
+
+Dizi sekmesi
+   Genom veya transkript gerekmez; diziyi doğrudan yapıştırırsınız. FASTA başlığı,
+   boşluk, satır numarası ve küçük harf sorun değil, otomatik temizlenir.
+
+   - Tek dizi  : Verilen dizi üzerinde primer aranır. Hedefi köşeli parantezle
+                 işaretleyebilirsiniz:  ...ACGT[A/G]TTTC...
+                 İsterseniz onun yerine hedef konumu yazabilirsiniz (1234 ya da
+                 1200-1260). İkisi de verilmezse dizinin tamamı serbest kalır;
+                 bu durumda dizi en fazla 50.000 bp olabilir (daha uzun dizide
+                 hesap çok uzar). Hedef verildiğinde uzunluk sınırı yoktur.
+
+   - İki dizi  : Forward primer BİRİNCİ dizinin, reverse primer İKİNCİ dizinin
+                 içinden seçilir; hiçbiri diğerine taşmaz. Bu modda varyant/hedef
+                 kavramı yoktur; "şu diziden bir forward, şu diziden bir reverse
+                 bul" demenin yoludur. Füzyon transkripti (forward A geninde,
+                 reverse B geninde) ve delesyon kırılma noktası da bu modla
+                 tasarlanır.
+
+                 Diziler varsayılan olarak bitişik kabul edilir. İki dizi tek bir
+                 ürünün iki ucuysa ve aradaki parçayı yapıştırmadıysanız ama
+                 uzunluğunu biliyorsanız, "İki dizi arası mesafe" başlığını açıp
+                 yazabilirsiniz. Diğer tüm durumlarda dokunmanıza gerek yok.
+
+                 ÖNEMLİ: İki dizinin gerçekte ne kadar uzakta olduğunu
+                 bilmiyorsanız "Mesafe bilinmiyor - ürün boyu kısıtı
+                 uygulanmasın" kutusunu işaretleyin. Aksi hâlde amplikon aralığı
+                 (varsayılan 180-650 bp) primerleri dizilerin birleşme noktasına
+                 doğru çeker ve dizilerin uçlarındaki iyi primerler elenir.
+                 Füzyon/kırılma noktasında kutuyu KAPALI bırakın - orada ürün
+                 boyu gerçektir.
+
+   Bu sekmede genomik koordinat olmadığı için dbSNP kaçınması uygulanmaz.
+   Özgüllük kontrolü ise çalışır ve anlamlıdır: bir füzyon çiftinin sağlıklı
+   genomdan ürün VERMEMESİ beklenir.
+
+Kırılma noktası sekmesi
+   Delesyon ya da duplikasyonun sınırları girilir: kromozom, başlangıç, bitiş
+   (silinen / kopyalanan bölgenin ilk ve son bazı). "chr2:50,000,001-50,012,000"
+   biçimi başlangıç kutusuna yapıştırılabilir, kutular kendiliğinden dolar.
+
+   - Delesyon     : Primerler silinen bölgenin iki yanına konur (gap-PCR).
+                    Delesyonlu alel kısa bir kırılma noktası ürünü verir;
+                    kırılma noktası ürünün içindedir, Sanger ile okunur.
+                    Delesyon küçükse normal alel de (daha uzun) bant verir.
+   - Duplikasyon  : Tandem duplikasyonda primerler bölgenin içine, uçlara yakın
+                    ve DIŞA bakacak şekilde konur; yalnızca iki kopyanın birleşim
+                    yerinden ürün verirler (boy, duplikasyonun büyüklüğünden
+                    bağımsız). Ters yönlü ya da başka yere eklenmiş kopyaları
+                    yakalamaz: negatif sonuç duplikasyonu dışlamaz. 1,5 kb'tan
+                    küçük duplikasyonda dış primerler ve boy farkı kullanılır.
+   - Belirsizlik  : Sınırlar MLPA, array ya da ekzom gibi yaklaşık bir yöntemden
+                    geliyorsa ± bp girin; primerler olası tüm kırılma noktalarının
+                    güvenli tarafına konur, bant boyu aralık olarak verilir.
+   - Kontrol primeri (isteğe bağlı, varsayılan kapalı): delesyonda normal alel
+                    bandı (heterozigot / homozigot ayrımı), büyük duplikasyonda
+                    PCR'ın çalıştığını gösteren kontrol bandı. Kontrol primeri
+                    bölgenin bir ucunda bulunamazsa öbür ucunda aranır; hairpin
+                    sıcaklığı Ta önerisinin 5 °C altını geçmeyen aday seçilir.
+                    Böyle bir aday yoksa kartta kontrol primeri için hairpin
+                    uyarısı çıkar.
+
+   Her çift için genotipe göre beklenen bantlar tabloda gösterilir. Primerler
+   kırılma noktasına en az 100 bp uzak tutulur ki Sanger okumasında kırılma
+   noktası iyi okunsun.
+
+Değerlendir sekmesi
+   Elinizdeki bir primer çiftini inceler, yeni primer tasarlamaz: genomda nereye
+   oturduğunu, ne ürün vereceğini ve vermiyorsa nedenini söyler. Primerleri
+   5'→3' yazın; Reverse boş bırakılırsa yalnızca Forward incelenir (DNA ve RNA
+   modunda): primerin kendi özellikleri ve yerleşimi değerlendirilir, ürün ve
+   çift teşhisi yapılmaz. Sonuç üstteki referans genomla (GRCh38 / GRCh37)
+   hesaplanır.
+
+   - DNA (genomik) : Primerler genomun tamamında aranır (yerel genom dosyası
+                     gerekir). Her primerin genomdaki bağlanma bölgeleri (konum,
+                     yön, uyumsuz baz, gen, ekzon / intron) ve çiftin öngörülen
+                     ürünleri listelenir. Primerin oturduğu yerde yaygın bir
+                     varyant (dbSNP) varsa rs numarası tabloda görünür ve
+                     bulgularda yazar (allel dropout riski): varyant 3' uca 5
+                     baz ya da daha yakınsa sorun, daha uzaksa uyarı sayılır.
+   - RNA / cDNA    : Transkript kodu (NM_) gerekir; bilmiyorsanız gen sembolünü
+                     yazıp "Gen ile bul"a basın, MANE Select işaretli gelir.
+                     Ekson sınırına oturan bir cDNA primeri genomda bütün hâlde
+                     bulunmadığı için DNA modu ona yanlış alarm verir; bu modda
+                     transkript esas alınır. Her primerin cDNA konumu ve eksonu,
+                     ürünün cDNA bandı, gDNA bandı ve kapsadığı ekson sınırı
+                     sayısı gösterilir.
+
+   Sonuç ekranı en üstte üç düzeyli bir kararla başlar: "Sorun görünmüyor",
+   "Dikkat edilmesi gerekenler var" ya da "Ciddi sorun var". Hemen altındaki
+   bulgular sorun / uyarı / bilgi sırasıyla gelir; ardından primer özellikleri
+   (Tm, GC, hairpin, self ve dimer skorları, ΔTm, Ta önerisi).
+
+   Öngörülen ürünler tablosunda iki primerin de tam oturduğu ürün "hedef"
+   işaretlidir. Diğer ürünler iki primerdeki toplam uyumsuzluğa göre yüksek
+   (0-2), orta (3-5) ya da düşük (6+) risk alır (Özgüllük kontrolündeki ölçü);
+   düşük olasılıklılar "Bağlanma olasılığı düşük ... ürünü göster" düğmesinin
+   arkasındadır. "Kombinasyon" primerlerin genomdaki sırasıdır: F+R ya da R+F
+   çiftin kendi ürünü, F+F ve R+R tek primerin iki ayrı yere ters yönde
+   bağlanmasıyla oluşan yan üründür. "Ürün dizisi" düğmesi çoğaltılan diziyi
+   primerler işaretli gösterir. Çiftin kendi ürününde dizi her zaman
+   Forward'dan başlar; primerler genomda ters sıradaysa (R+F) ters tümleyen
+   gösterilir ve dizinin üstünde yazar. F+F / R+R ürününde dizi genomdaki
+   yönündedir ve iki uç da o primerin adıyla işaretlenir. Hedef ürün
+   "Çoğaltılabilen en uzun ürün" sınırınızın üstündeyse uyarı gelir.
+
+   F ve R genin okuma yönüne göre beklenir. "Forward" verdiğiniz primer genin
+   tersine okuyorsa "F ve R rolleri yer değişmiş" uyarısı gelir; ürün bir genle
+   örtüşmüyorsa genomun + ipliği esas alınır, RNA modunda transkriptin yönü.
+   PCR'ı etkilemez, kayıtlarınızda yanıltır: iki diziyi yer değiştirmeniz
+   yeterlidir. Psödogenli bir genin kopyası ters yönlüyse (PMS2/PMS2CL gibi) rol
+   kararı genin kendi lokusundaki ürüne göre verilir; kopya lokuslarda çift ters
+   yönde oturuyorsa bunu kısa bir bilgi notu söyler.
+
+   İsteğe bağlı "Varyant konumu" alanına chr19:11537002 ya da RNA modunda c.215
+   yazarsanız ürün dizisinde o konum işaretlenir. Konum hiçbir ürünün içinde
+   değilse (başka kromozom ya da ürün dışı) işaret çıkmaz ve bunu söyleyen bir
+   bilgi notu gelir. Tanınmayan kromozom öneki (chrZZ:) ve seçili derlemeye
+   uymayan RefSeq erişim numarası (NC_000017.10: ile GRCh38) hata verir;
+   kurallar tasarımdaki konum alanıyla aynıdır. NC_000017.11:g.7676154 ve
+   NC_000017.11:7676154-7676160 biçimleri chr17: karşılıklarıyla aynı okunur.
+
+   Tasarım kartlarındaki "Değerlendir" düğmesi çifti bu sekmede açar: diziler,
+   varyant konumu ve (cDNA modunda) transkript kodu kendiliğinden dolar, tasarım
+   sonuçlarınız kaybolmaz.
+
+
+FAVORİLER
+---------
+Kullanacağınız çifti daha sonra bakmak için saklayabilirsiniz. Her tasarım
+kartında ve Değerlendir sonucunda "☆ Favorilere ekle" düğmesi vardır. Basınca
+isteğe bağlı bir not alanı açılır; "Kaydet" ile çift eklenir ve düğme
+"★ Favorilerde" olur (bir daha basarsanız favorilerden çıkarmayı sorar).
+Not alanına hasta adı ya da kimliği yazmayın.
+
+Üst çubuktaki "★ Favoriler" düğmesi listeyi açar (yanındaki sayı kayıt
+sayısıdır). Her kayıtta tarih, sekme, referans genom, girdiğiniz konum,
+primerler (kopyalanabilir), ürün / bant boyları, Ta önerisi ve notunuz durur.
+Arama kutusu gen, konum, primer dizisi ve notta arar. "Değerlendir'de aç"
+çifti Değerlendir sekmesinde yeniden değerlendirir; genomik kayıtta üst
+çubuktaki referans genom kaydın genomuna geçer. Kırılma noktası kayıtlarında
+bu düğme yoktur: Değerlendir çifti referans genomda inceler, bu çiftler ise
+yeniden düzenlenmiş alel için tasarlanır; referanstaki sonuç testi anlatmaz.
+"Listeyi CSV indir" her primeri bir satır olarak verir; laboratuvarınızın
+primer listesine aktarabilirsiniz.
+
+Favoriler yalnızca bu bilgisayarda, %APPDATA%\AllPrime\favoriler.json
+dosyasında saklanır; dışarıya hiçbir şey gönderilmez. Uygulamayı güncellemek
+bu dosyaya dokunmaz. Yedeklemek ya da başka bilgisayara taşımak için bu
+dosyayı kopyalayın. Dosya bozulursa silinmez: yeni bir çift eklediğinizde
+yanına favoriler.bozuk-<tarih>.json adıyla taşınır.
+
+
+ÇOĞALTILABİLEN EN UZUN ÜRÜN
+---------------------------
+Gelişmiş parametrelerdeki (ve "⚙ Ayarlar"daki) "Çoğaltılabilen en uzun ürün (bp)"
+laboratuvarınızın PCR ile güvenle çoğaltabildiği en uzun üründür. Varsayılan 700 bp'dir; daha uzun ürün
+çoğaltabilen bir laboratuvar bu değeri yükseltir. Ayar dil seçimi gibi bu
+bilgisayarda saklanır, her açılışta sıfırlanmaz.
+
+"Amplikon max" ile farkı: amplikon aralığı (min/max) o tasarımda primer3'ten
+istediğiniz hedef boydur. Bu sınır ise bir tavandır ve her sekmede geçerlidir —
+amplikon aralığını kendi hesaplayan ekson atlama testinde de. Ayrıca primer3'ün
+seçmediği bantları, yani kırılma noktasındaki normal alel / kontrol / duplikasyon
+bantlarını değerlendiren ölçü budur; amplikon aralığının oralarda etkisi yoktur.
+İkisi çelişirse küçük olan geçerlidir ve bu size not olarak bildirilir (örn.
+amplikon max 2000, sınır 700 ise ürünler 700 bp'yi aşmaz).
+
+Bu sınır SİZİN protokolünüzdür, PCR hakkında mutlak bir hüküm değildir. Program
+"şu boyun üstü çoğalmaz" demez; "sizin sınırınızın üstünde" der ve daha uzun ürün
+çoğaltan bir protokolde o bandın da görülebileceğini yazar. Başka bir laboratuvar
+sınırı yükselttiğinde aynı bant "sınır içinde" sayılır.
+
+Etkisi:
+ - Hiçbir sekmede bu boydan uzun ürün önerilmez.
+ - Değerlendir sekmesinde hedef ürün bu sınırın üstündeyse uyarı verilir ve daha
+   uzun ürün çoğaltan bir protokolde bandın görülebileceği yazılır.
+ - Kırılma noktası sekmesinde normal alel, kontrol ve duplikasyon bantları buna
+   göre işaretlenir. Bant tablosundan silinmez; boyu yazılır ve yanına
+   "sınırınızın üstünde" / "sınırınızın çok üstünde" notu konur.
+ - Küçük bir duplikasyonda dış primerlerle bant sınıra sığmıyorsa, bunun yerine
+   dışa bakan primerlerle kısa birleşim ürünü tasarlanır ve nedeni yazılır.
+ - Belirsizlik payı yüzünden ürün sınırı aşacaksa, bu sınırla en fazla kaç bp'lik
+   payla çalışılabileceği söylenir.
+ - Ekson atlama testinde hedef ekson, normal transkript ürününü sınırın üstüne
+   çıkaracak kadar uzunsa bu açıkça söylenir.
+
+
+PSÖDOGEN / YAKIN-ÖZDEŞ KOPYA UYARISI
+------------------------------------
+Bazı genlerin genomda neredeyse birebir ikizi vardır (PMS2/PMS2CL,
+CYP21A2/CYP21A1P, NCF1/NCF1B, HBA1/HBA2 gibi). Böyle bir gende tasarlanan primer
+kopyadan da ürün verebilir; iki lokus birlikte çoğalırsa hastanın varyantı
+seyrelir ya da kopyanın dizisi hastaya yazılır.
+
+Program böyle bir gende çalıştığınızı fark ederse sonuçların üstünde uyarı
+gösterir: kopyanın adını, kromozomunu ve benzerlik oranını yazar. Gen adı
+girmeseniz de olur, koordinattan bulunur.
+
+Kopya her zaman psödogen değildir; çoğu zaman ayrı bir gendir (ADH1A/B/C,
+MYH6/MYH7 gibi gen aileleri). Uyarı ikisini ayırt eder. Gen ailelerinde
+benzerlik genelde ekzonlarda yoğunlaşır, intronlar ayrışmıştır; o durumda
+yalnızca ekzon üzerine oturan primerler etkilenir ve uyarı bunu söyler.
+
+Uyarı bir hüküm değildir — hangi çiftin gerçekten kopyadan da ürün verdiğini
+özgüllük taraması söyler: DNA modunda kartlardaki otomatik rozetlere bakın,
+diğer modlarda "Özgüllüğü kontrol et" düğmesine basın. Bu genlerde sonucu
+görmeden sipariş vermeyin.
+
+Kopyadan ayrışan çiftler: Uyarı çıkan bir genin DNA tasarımında kurallara
+uyan bütün adaylar genomda taranır (aşağıda "En iyi Özgül çift"). Liste dışında
+kalan en iyi Özgül çift varsa kartların üstündeki "Kopyadan ayrışan çiftler"
+bölümünde, Özgül çiftlerin ilk 8'iyle birlikte listelenir. "Sıra" çiftin
+programın sıralamasındaki yeridir; "havuz dışı" çift, listenin seçildiği ilk
+1.000 adayın dışındadır. "Değerlendir" düğmesi çifti Değerlendir sekmesine
+taşır. Normal liste ve sırası değişmez. Otomatik özgüllük kontrolü kapalıysa
+arama bölümdeki düğmeyle başlatılır. Hiç Özgül çift yoksa gen ile kopya o
+bölgede çok benzer olabilir (SMN1 gibi); program en az riskli üç çifti gösterir.
+O zaman ürünü Sanger ile okuyup hangi kopyadan geldiğini ayırt edici bazlardan
+kontrol edin.
+
+Bulunan çiftlerin çoğu kopyadan primerin 3' ucundaki tek bir bazla ayrışır:
+tarama, son 6 bazından birinde kopyayla fark olan primeri kopyada "bağlanmaz"
+sayar. Fark uca ne kadar yakınsa ayrışma o kadar güçlüdür, ama tek bir fark
+kopyanın çoğalmasını her zaman tamamen durdurmaz. Bu yüzden bu genlerde ürünü
+Sanger ile okuyup hangi kopyadan geldiğini kontrol edin.
+
+Tablodaki "Kopyadan fark" sütunu bu farkın hangi primerde ve 3' ucundan
+kaçıncı bazda olduğunu yazar (örneğin "R: 3' son baz"); kopyada birden çok fark
+varsa sayısı da yazılır. "Çok farklı", kopya bölgelerinde en çok 5
+uyumsuzlukla ürün verecek bir bağlanma olmadığı anlamına gelir. Seçenek varsa
+"Çok farklı" ya da farkı 3' uca en yakın çifti tercih edin. Hücrenin üzerine
+gelince kopyadaki olası ürünün yeri görünür.
+
+"Özgül" etiketi taramada kopyadan ürün görünmediğini söyler; laboratuvarda
+doğrulanmış sonuç değildir.
+
+Liste, gen adlarından çıkarılan aday çiftlerin yerel genom dosyasıyla
+ölçülmesiyle üretilmiştir: genden alınan 500 bp'lik pencerelerin yüzde kaçı
+kopyada en az %90 benzerlikte? İntronlarını koruyan kopyalarda genomik tasarım
+da etkilenir; intronsuz (işlenmiş) psödogenlerde yalnızca ekzon üzerine oturan
+primerler etkilenir ve uyarı bunu ayırt eder.
+
+
+PRİMER GENİN NERESİNDE (ekzon / intron)
+---------------------------------------
+DNA ve Kırılma noktası sekmelerinde her primerin yanında "Gen bölgesi" sütunu
+vardır: ekzon 7, intron 7 ya da ikisinin sınırı. Kontrol primeri için de yazar.
+
+Ekzon numarası hangi transkripti esas aldığınıza göre değişir. Program MANE
+Select transkripti tercih eder; hücrenin üzerine geldiğinizde gen adını,
+transkript numarasını ve toplam ekzon sayısını gösterir. CSV'ye de yazılır.
+
+"ekzon 8 / intron 8 sınırı" gibi bir etiket, primerin sınırı aştığını söyler.
+Genomik tasarımda bu sorun değildir (şablon gDNA'dır), ama aynı primeri cDNA
+üzerinde kullanmayı düşünüyorsanız bilmeniz gerekir: orada intron yoktur.
+
+Eksi iplikli genlerde (TP53 gibi) ekzonun iki ucu farklı intronlara komşudur;
+program bunu doğru ayırır.
+
+
+PRİMERLERİ IGV'DE BULMAK
+------------------------
+DNA, RNA ve Kırılma noktası kartlarının ikinci satırında primerlerin kapsadığı
+genomik aralık yazar (örn. "Konum: chr7:117.559.410–117.559.715"). Kırılma
+noktasında aralık kontrol primerini de kapsar; RNA'da ürünün genomdaki yeridir
+(intronlar dahil). Yanındaki "IGV için kopyala" düğmesi aralığı IGV ve UCSC
+arama kutusunun anladığı biçimde kopyalar (chr7:117559410-117559715). IGV'de
+kartın referans genomu açık olmalıdır: GRCh38 için hg38, GRCh37 için hg19 (düğmenin
+ipucunda yazar; RNA sekmesi her zaman GRCh38 kullanır). Favoriler ekranındaki DNA
+ve Kırılma noktası kayıtlarında da aynı satır vardır. Dizi sekmesinde genomik
+koordinat olmadığı için bu satır çıkmaz.
+
+
+YAYGIN VARYANT (dbSNP) KAÇINMASI
+---------------------------------
+Primerin bağlandığı yerde yaygın bir varyant varsa o allel çoğalmaz ve heterozigot
+hasta HOMOZİGOT görünür. Program bu konumları tasarım sırasında otomatik olarak
+devre dışı bırakır; primer oralara hiç oturmaz. Ayrıca bir düğmeye basmanıza
+gerek yoktur, her tasarımda çalışır.
+
+Bölge yaygın varyant açısından çok yoğunsa ve hiç uygun primer kalmıyorsa kısıt
+otomatik gevşetilir ve bu size sonuçların üstünde bir uyarı olarak bildirilir.
+Bu durumda tablodaki "SNP" sütununa bakın: üzerine geldiğinizde rs numarasını,
+MAF değerini ve varyantın primerin 3' ucundan kaç baz uzakta olduğunu gösterir.
+3' uca yakın olanlar (5 baz ve altı) kırmızı işaretlenir - en tehlikelileri onlardır.
+
+"Yaygın varyantların üzerine primer koyma" onay kutusunu yalnızca kasıtlı
+durumlarda kapatın (örn. allele-spesifik primer). Kapatınca varyantlar yine
+raporlanır, sadece kaçınılmaz.
+
+
+ÖZGÜLLÜK KONTROLÜ
+-----------------
+Her sonuç kartının altındaki "Özgüllüğü kontrol et" düğmesi, o çiftin genomda
+istenmeyen ürün verip vermediğini tarar. Tam genom taraması çift başına
+yaklaşık 2-3 saniye sürer.
+
+DNA modunda bunu ayrıca otomatik yapar: sonuçlar hemen gösterilir, ardından
+çiftler arka planda sırayla taranır ve her kartın üstüne bir rozet eklenir:
+"Özgül", "Orta riskli yan ürün" ya da "Yüksek riskli yan ürün". Rozetin
+üzerine gelince en riskli ürünün yeri, boyu ve uyumsuzluk sayısı görünür.
+Rozetler yalnızca işarettir: hiçbir çift atılmaz, sıralama değişmez. Özgül
+olmayan bir çift yine de en iyi aday olabilir; seçimi siz yaparsınız.
+İstemezseniz "Özgüllüğü otomatik kontrol et" kutusunu kapatın (tercih
+hatırlanır). Diğer modlarda (RNA/cDNA, ekson atlama, dizi, kırılma noktası)
+otomatik tarama yapılmaz; düğmeyi kullanın. Otomatik taranmış bir çiftte
+düğme ayrıntıyı anında açar.
+
+En iyi Özgül çift: Liste, primer3'ün kurallara uyan adaylarından ilk
+1.000'i alınıp primer boyu, self/dimer ve kısa ürün tercihine göre sıralanarak
+seçilir; özgüllük sıralamaya girmez. Rozetler bitince program kurallara uyan
+bütün adayları (çoğu zaman on binlerce çift) tek geçişte genomda tarar. "En
+iyi" şu sırayla belirlenir: önce Özgül olmak (3 kb içinde yüksek ya da orta
+riskli yan ürün yok), sonra listeyi sıralayan aynı ölçüt. Liste ve sırası
+değişmez; en iyi Özgül çift 1. çift değilse kartların üstünde ayrı bir kutu
+açılır:
+  - listedeyse kaçıncı sırada olduğu yazar ("... çifte git" düğmesiyle karta
+    gidilir);
+  - listede yoksa çiftin kendisi gösterilir; "1. çifte göre" sütunu farkı
+    yazar (primer boyu sapması, dimer, ürün boyu);
+  - 1. çift Özgül ama listenin dışında aynı kurallarla daha iyi skorlu bir
+    Özgül çift varsa "Daha iyi bir Özgül çift var" yazar;
+  - hiç Özgül çift yoksa en az riskli üç çift gösterilir (önce en az yüksek,
+    sonra en az orta riskli yan ürün).
+1. çift zaten en iyiyse kutu açılmaz. Tarama arka planda çalışır, hedef başına
+çoğunlukla 10-60 saniye sürer (çekirdek sayısı azsa daha uzun; yoğun tekrar
+bölgelerinde birkaç dakika) ve yerel genom dosyası gerekir. Yeni tasarım
+taramayı durdurur. Otomatik kontrol kapalıysa tarama yapılmaz; kontrolü
+sonradan açarsanız son tasarım için başlar. "Özgül" etiketi taramada yan
+ürün görünmediğini söyler; laboratuvarda doğrulanmış sonuç değildir.
+
+Sonuç üç risk seviyesinde gelir. Seviye, primerin bağlandığı yerdeki uyumsuz
+baz sayısına göre belirlenir (iki primerin toplamı):
+
+   yüksek (0-2 uyumsuzluk)  : gerçekten çoğalması beklenir, dikkate alın
+   orta   (3-5)             : zayıf ihtimal
+   düşük  (6+)              : pratikte çoğalmaz, bilgi amaçlı listelenir
+
+"F+R" klasik yan üründür. "F+F" ve "R+R" de gerçek risktir: aynı primerin iki
+ayrı yere ters yönde bağlanmasıyla oluşurlar.
+
+Tarama, primerin 3' ucundaki son 6 bazın tam oturduğu yerleri bulur. Bu kasıtlıdır:
+3' ucu tutmayan primer uzamaz, yani orada PCR ürünü de oluşmaz.
+
+Değerlendir sekmesi bu kural yüzünden listede olmayan yakın yerlere de bakar:
+çift bir yerde yalnızca 1-2 baz farkla ürün verebiliyorsa ve fark primerin son
+6 bazındaysa (psödogende sık görülür), ürün tablosunun altında "Kopyadan
+yalnızca tek baz farkı var — temkinli olun" notu çıkar. Not yeri, ürün boyunu
+ve farkın hangi primerde, 3' uçtan kaçıncı bazda olduğunu yazar. Tek bazlık
+fark zayıf bir ayrımdır: düzeltme yapmayan Taq kullanın ve ürünü Sanger ile
+okuyup hangi kopyadan geldiğini kontrol edin.
+
+Not: Bu kontrol yerel genom dosyasını kullanır. Genom tanıtılmamışsa (Ensembl API
+moduna düşülmüşse) özgüllük kontrolü yapılamaz.
+
+
+NOTLAR
+------
+- Tm hesabı: primer3, SantaLucia 1998 NN + tuz/Mg/dNTP düzeltmeleri.
+- Self / dimer değerleri, primerin kendine ve diğer primere ne kadar
+  yapışabileceğini gösteren tamamlayıcılık skorlarıdır; düşük değer iyidir
+  (self eşiği 8, 3' uç eşiği 3).
+- Transkript tabloları: UCSC refGene (hg19/hg38) + NCBI MANE (Veri dosyaları paneli indirme anındaki güncel MANE
+  sürümünü alır; yerel dosya sürüm numarası taşımaz).
+- Tüm hesaplama yerel makinede yapılır, dışarıya veri gönderilmez.
+
+
+İLETİŞİM VE ATIF
+----------------
+Soru, öneri ve hata bildirimi: eren.501kilinc@gmail.com
+Tanıtım sayfası: https://allprime-app.github.io/
+Hata bildirirken hasta adı ya da kimliği gibi kişisel veri göndermeyin; programın
+sürüm numarasını ve hatayı veren girdiyi yazmanız yeterlidir.
+
+Çalışmanızda AllPrime'ı kullandıysanız lütfen atıf yapın. Önerilen biçim:
+  Kılınç E. AllPrime: varyanta özgü primer tasarım aracı (kullandığınız sürüm). 2026.
+  https://allprime-app.github.io/
+
+
+LİSANS VE KAYNAK KOD
+--------------------
+AllPrime © 2026 Eren Kılınç. Program GNU GPL sürüm 2 ya da (isteğinize göre)
+daha sonraki bir sürümü ile lisanslıdır ve hiçbir garanti olmaksızın sunulur.
+Paketli motor Apache-2.0 lisanslı bileşenler (requests, OpenSSL) içerdiğinden
+program, kurum dışına bunlarla uyumlu olan GPL v3 koşullarıyla verilir. Lisans
+metinleri: LICENSE (GPL v2) ve LICENSE-GPL-3.0.txt (GPL v3). Üçüncü taraf
+bileşenlerin lisansları THIRD-PARTY-NOTICES.txt dosyasındadır.
+
+Programın kaynak kodu (motor, arayüz ve derleme betikleri) bu klasörde:
+kaynak\AllPrime-kaynak-<sürüm>.zip. Klasörü başkasına verirken bu dosyayı
+silmeyin: GPL (v2 Bölüm 3, v3 Bölüm 6), program verilirken kaynağının da
+birlikte verilmesini şart koşar.

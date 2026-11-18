@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!-- AllPrime - Primer Tasarim Araci
+     Copyright (c) 2026 AllPrime eser sahibi - bkz. AUTHORS
+     GNU GPL v2 veya sonrasi (GPL-2.0-or-later) - bkz. LICENSE -->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Yalnizca kendi dosyalarimiz ve yerel motor (inceleme bulgusu 7). Satir ici
+       stil acik: app.js birkac yerde style="..." uretiyor; satir ici SCRIPT kapali. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'" />
+  <title>AllPrime</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="consent-body">
+  <header class="topbar">
+    <div class="brand">
+      <img class="logo" src="logo.svg" alt="AllPrime" />
+      <div class="brand-text">
+        <h1>AllPrime</h1>
+        <p id="c_sub">Bilgilendirme ve sorumluluk bildirimi</p>
+      </div>
+    </div>
+    <div class="assembly">
+      <span class="assembly-label" id="c_langlabel">Dil / Language</span>
+      <div class="seg">
+        <button class="lang-btn active" data-lang="tr">Türkçe</button>
+        <button class="lang-btn" data-lang="en">English</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="consent-main">
+    <p class="consent-lead" id="c_lead">
+      Bu yazılımı kullanmadan önce aşağıdaki bildirimi okumanızı öneririz. Bu ekran
+      yalnızca bilgilendirme içindir; onay istemez. Bildirimin gösterildiği bu bilgisayarda kaydedilir.
+    </p>
+
+    <div class="notice-box" id="noticeBox">
+      <b id="c_ban">Önemli uyarılar</b>
+      <ul>
+        <li id="c_n1">AllPrime bir tanı cihazı değildir; ürettiği primerler, tanı amaçlı kullanılmadan
+          önce laboratuvarınızda deneysel olarak doğrulanmalıdır.</li>
+        <li id="c_n2">Yazılım “olduğu gibi”, garantisiz sunulur; kullanımdan doğan sonuçların
+          sorumluluğu kullanıcıya aittir.</li>
+        <li id="c_n3">AllPrime GNU GPL (v2 veya sonrası) ile lisanslıdır; üçüncü taraf lisansları
+          uygulama klasöründedir.</li>
+      </ul>
+    </div>
+
+    <div class="terms-box" id="termsBox"></div>
+
+    <div class="consent-actions">
+      <button id="acceptBtn" class="primary">Anladım, devam et</button>
+      <span class="consent-meta" id="c_meta"></span>
+    </div>
+    <p class="consent-copy" id="c_copy">&copy; 2026 Eren Kılınç &middot; GNU GPL v2 veya sonrası</p>
+  </main>
+
+  <script src="consent.js"></script>
+</body>
+</html>

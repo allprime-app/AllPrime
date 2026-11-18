@@ -1,0 +1,43 @@
+# AllPrime - depo YALNIZCA KAYNAK KODU tutar.
+# Veri dosyalari (genom, transkript tablosu, dbSNP indeksi) ve derleme ciktilari
+# depoya girmez: toplam 7 GB'i asarlar ve zaten uretilebilir/indirilebilirler.
+
+# --- Derlenmis uygulama ---
+# Artik deponun ICINDE degil, YANINDA durur: ..\AllPrime\.
+# Ic ice ayni ad kullanicida karisiklik yaratiyor, kopyalarken kaynak kodu
+# da tasiyordu. Yanlislikla geri konursa yine disarida kalsin:
+AllPrime/
+
+# --- Referans veri (Ensembl / UCSC / NCBI'dan indirilir) ---
+genomes/
+annotations/
+*.fa
+*.fa.gz
+*.fai
+*.apidx
+
+# --- Python ---
+backend/.venv/
+backend/build/
+backend/dist/
+__pycache__/
+*.pyc
+
+# --- Electron / Node ---
+electron/node_modules/
+electron/dist/
+# PyInstaller ciktisi (build.ps1 uretir)
+electron/sidecar/
+# electron-builder indirme onbellegi (~350 MB)
+.cache/
+
+# --- Gelistirme araci oturum dosyalari (yerel izinler, komut gecmisi): depoya ve dagitima girmez ---
+.claude/
+
+# --- Isletim sistemi / editor ---
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+.vscode/
+.idea/
