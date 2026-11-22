@@ -1,7 +1,9 @@
 # AllPrime - Geliştirici belgesi
 
 Bu belge programın iç işleyişini, tasarım kararlarını ve geliştirme / test / paketleme adımlarını anlatır.
-Kullanım için: [README.md](README.md) ve [KURULUM.txt](KURULUM.txt).
+Kullanım için: [README.md](README.md), [KURULUM.txt](KURULUM.txt) ve İngilizcesi [USER_GUIDE.txt](USER_GUIDE.txt).
+`USER_GUIDE.txt`, `KURULUM.txt`'nin bölüm bölüm çevirisidir: birini değiştirince ötekini de güncelleyin
+(nöbetçi `test_ingilizce_kilavuz` bölüm sayısını ve ölçülen sayıları karşılaştırır).
 
 Varyanta özgü primer tasarımı. Arayüz Türkçe ve İngilizce çalışır. Tasarım modları
 (ayrıca hazır primerler için Değerlendir sekmesi):
@@ -70,7 +72,7 @@ alanını taşır; `backend/lang.py` bunu istek bazında ayarlar (Flask threaded
 için `ContextVar` kullanılır, istekler birbirinin dilini bozmaz).
 
 Arayüz metinleri `renderer/i18n.js` içinde tek bir sözlükte toplanır (TR ve EN'de
-654'er anahtar). HTML tarafında `data-i18n` / `data-i18n-ph` / `data-i18n-title`
+659'er anahtar). HTML tarafında `data-i18n` / `data-i18n-ph` / `data-i18n-title`
 nitelikleri kullanılır, JS tarafında `t("anahtar")`. Backend mesajlarında ise ayrı
 katalog yerine iki dil yan yana yazılır:
 
@@ -116,6 +118,14 @@ lisansı (GNU GPL; yalnızca lisans ve metinlerinin yeri — sürüm 1.4'te sade
 dağıtım ayrıntısı aşağıdaki **Lisans** paragrafında ve KURULUM.txt'de) ve veri kaynakları.
 6. madde bir kullanım kısıtlaması değil, sorumluluk bildirimidir — GPL ek kısıtlamaya
 izin vermez (sürüm 1.1'de bu yüzden değiştirildi).
+
+**Ana ekranın altındaki duyuru** (`app.notice`, her açılışta ve ⚙ Ayarlar açıkken de görünür)
+dört öge taşır: telif satırı, garanti verilmediği, dağıtım koşulu ve lisans metninin yeri. Dağıtım
+cümlesi duyurudan çıkarılmaz: GPL v2 md. 2(c) ve GPL v3'teki "Appropriate Legal Notices" tanımı
+onu duyurunun parçası sayar, ve program bu duyuruyu gösterdiği için değiştirilmiş sürümler de eser
+sahibinin adıyla birlikte göstermek zorundadır. Cümle izin veren değil koşulu vurgulayan ifadeyle
+yazılır: "Kopyalanması ve dağıtılması yalnızca bu lisansın koşullarıyla mümkündür." (nöbetçi:
+`test_telif_gorunur`).
 
 ---
 
@@ -196,6 +206,7 @@ RNA · cDNA sekmesinde "Ekson atlama testi" seçilince **Atlanacak eksonlar** al
 - **Bitişik olmayan seçimde bantlar:** her tekli seçim ve hepsi birden için `skip_bands` (`exons`, `diff`, `frame`); her çiftte bant boyu normal − diff (`bands`). Arayüz bunları "Δ4: 412 bp · Δ6: 578 bp · Δ4+6: 299 bp" biçiminde gösterir; CSV'ye seçilen eksonlar ve bantlar sütunu eklenir, dosya adında seçim yazar (`exon4-6`, `exon4,6`).
 - **Bant uyarısı eşiği (bir tasarım seçimidir, ölçülmüş bir ayrım sınırı değildir):** iki beklenen bant (normal dahil) arasındaki fark `max(20 bp, büyük bandın %5'i)`'nden küçükse çiftte `band_close` işaretlenir ve jelde ayırt etmenin zor olabileceği yazılır. Eşik gerçek jel çözünürlüğüne göre doğrulanmamıştır; gerekirse kapiler elektroforez ya da yüksek yüzdeli jel düşünülmelidir.
 - **Okuma çerçevesi:** kodlayan baz sayısı CDS ile örtüşen kısımdan hesaplanır; seçimin bir kısmı UTR'deyse özet bunu belirtir.
+- **Sınır üstü primer (isteğe bağlı):** `params.junction_overlap` açıkken (arayüzde Varyant tipiyle ortak "Primer ekson sınırının üzerine otursun" kutusu; varsayılan kapalı) primerlerden biri hedef bloğun **dışındaki** bir ekson sınırına oturur. Mekanizma Varyant tipindekiyle aynıdır (`SEQUENCE_OVERLAP_JUNCTION_LIST`, 3' ≥ 4 ve 5' ≥ 7 baz). Bloğa komşu iki sınır ve bloğun içindekiler listeye girmez: atlanmış transkriptte bulunmadıkları için primer oraya otursa iki banttan biri görünmezdi. Dışarıda sınır yoksa (çapa eksonları transkriptin ilk ve son eksonuysa) 400 döner; sınıra uyan çift yoksa liste boş gelir ve not seçeneği kapatmayı söyler (eleme dökümünde primer3'ün `no overlap of required point` kalemi "ekson sınırı şartı" diye yazılır; Varyant tipinde de). Yanıtta `junction_mode` (`overlap` / `flanking`) vardır. Kartta primerlerden biri sınırı tasarım kuralındaki kadar aşıyorsa (motor her primere `junction_solid` yazar: 3' tarafta ≥ `min_3p_overlap_junction`, 5' tarafta ≥ `min_5p_overlap_junction`) gDNA çipi boy yerine "çoğalmaz" yazar (`gdnaCipi`; Varyant kartı, CSV ve favori kaydı da aynı kurala uyar, Değerlendir RNA için `product.gdna_none`). Sınıra yalnız değen primerde boy yazılmaya devam eder (ölçüm: LAMA2'nin varsayılan atlama tasarımlarında sınıra değen 109 primerin 51'i kuralı karşılıyor); kutu işaretliyken seçim özetindeki "Primerler ekson a ve ekson b içine konur" satırı da sınır primerini anlatan satırla değişir (`ex.primerSinir`); dışarıda sınır yoksa özet bunu tasarımdan önce söyler (`ex.primerSinirYok`). Ölçüm (250 rastgele MANE Select iç eksonu, GRCh38, varsayılan ayarlar): ayar kapalıyken 1. çiftin gDNA ürünü eksonların %14'ünde 1.500 bp'nin, %2,5'inde 700 bp'nin altında; ayar açıkken, kapalıyken çift çıkan eksonların %87'sinde çift çıkar ve normal bant ortanca 367 bp'den 390 bp'ye uzar. Nöbetçiler: `test_atlama_sinir_ayari`, `test_atlama_sinir_arayuz`.
 
 ## Dizi sekmesi
 
@@ -294,6 +305,24 @@ bozulursa öteki etkilenmez.
 
 Doğrulama: `test_smoke.py: test_favoriler` (node ile gerçek diskte; bozuk dosya, BOM, sınır,
 anahtar eşliği) ve gerçek uygulamada `v0863_favoriler_ui.mjs`.
+
+## Sağ tık menüsü (`electron/sagTik.js`, v1.1.3)
+
+Electron'da varsayılan sağ tık menüsü yoktur: seçili metin fareyle kopyalanamıyor, kutulara
+fareyle yapıştırılamıyordu (yalnız Ctrl+C / Ctrl+V çalışıyordu). `main.js` `createWindow`
+içinde `context-menu` olayını dinler ve `sagTik.sablon(p, L)` boş değilse menüyü açar:
+
+- yazı kutusunda Kes / Kopyala / Yapıştır / Tümünü seç (yapılamayan seçenek soluk görünür);
+- sayfada seçili metin varsa Kopyala;
+- ikisi de değilse menü açılmaz.
+
+Öğeler Electron'un hazır rolleridir; pano içeriği bu kodda okunmaz. Etiketler kayıtlı dile
+göre (`L`). Bilgilendirme ekranında da çalışır (aynı pencere).
+
+- **Paket:** `sagTik.js` hem `kurulu-guncelle.ps1` listesinde hem `package.json`
+  `build.files`'ta olmalı (yoksa `main.js` açılışta düşer).
+
+Doğrulama: `test_smoke.py: test_sag_tik_menusu` (şablon node ile çağrılır).
 
 ---
 
@@ -737,7 +766,7 @@ AllPrime-kaynak/
 │  ├─ requirements.txt        çalıştırma bağımlılıkları
 │  └─ requirements-build.txt  sadece derleme (PyInstaller)
 ├─ electron/                  masaüstü arayüz
-│  ├─ main.js, preload.js
+│  ├─ main.js, preload.js, favoriler.js, sagTik.js
 │  ├─ renderer/               index.html, app.js, style.css
 │  └─ sidecar/                derlenmiş Python sunucusu (build.ps1 üretir)
 ├─ annotations/               transkript tabloları — kaynak nüsha (~18 MB)
@@ -748,6 +777,7 @@ AllPrime-kaynak/
    ├─ genomes/                referans FASTA (~6 GB)
    ├─ annotations/            transkript tabloları + dbSNP indeksleri
    ├─ KURULUM.txt             kullanım notları (son kullanıcı için)
+   ├─ USER_GUIDE.txt          KURULUM.txt'nin İngilizcesi
    ├─ kaynak/                 AllPrime'ın kaynak kodu (zip; kurulu-guncelle.ps1 koyar)
    └─ resources/app, resources/backend
 ```

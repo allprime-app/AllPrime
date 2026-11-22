@@ -235,16 +235,18 @@
         </div>
       </div>
 
+      <div class="opt-box hidden" id="box-skip">
+        <p class="hint" data-i18n="rna.skip.help"></p>
+      </div>
+
+      <!-- Sinir kutusu iki tasarim tipinde de gorunur; aciklamasi tipe gore degisir (app.js) -->
       <div class="opt-box" id="box-junction">
         <label class="check">
           <input id="junction_overlap" type="checkbox" />
           <span data-i18n="rna.junction.label">Primer ekson sınırının <b>üzerine</b> otursun</span>
         </label>
-        <p class="hint" data-i18n="rna.junction.help"></p>
-      </div>
-
-      <div class="opt-box hidden" id="box-skip">
-        <p class="hint" data-i18n="rna.skip.help"></p>
+        <p class="hint" id="junctionHelp" data-i18n="rna.junction.help"></p>
+        <p class="hint hidden" id="junctionHelpSkip" data-i18n="rna.junction.helpSkip"></p>
       </div>
     </section>
 
@@ -466,7 +468,9 @@
          metninin yeri. Program bunu gosterdigi icin degistirilmis surumler de gostermek
          zorunda; eskiden eser sahibinin adi ekranda hic yoktu (2026-10-31). Lisans metni
          Ayarlar > Hakkinda'da; bildirimdeki baglanti oraya goturur. Ayarlar acikken de
-         gorunur kalir. -->
+         gorunur kalir. Dagitim cumlesi duyurudan cikarilmaz (md. 2c ve GPL v3 "Appropriate
+         Legal Notices" onu duyurunun parcasi sayar); kosulu vurgulayan ifadeyle yazilir
+         ("yalnizca bu lisansin kosullariyla", 2026-11-21). -->
     <footer class="app-footer" data-i18n="app.notice"></footer>
   </main>
 

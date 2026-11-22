@@ -1,7 +1,7 @@
 {
   "name": "allprime",
   "productName": "AllPrime",
-  "version": "1.0.0",
+  "version": "1.1.3",
   "description": "AllPrime - DNA / RNA / serbest dizi primer tasarimi, ozgulluk ve yaygin varyant kontrolu",
   "main": "main.js",
   "author": "Eren Kılınç",
@@ -21,6 +21,7 @@
       "main.js",
       "preload.js",
       "favoriler.js",
+      "sagTik.js",
       "renderer/**/*",
       "!**/.claude",
       "!**/.claude/**/*"

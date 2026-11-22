@@ -384,8 +384,10 @@ function bindUI() {
       const skipping = RNA_MODE === "skipping";
       $("field-cpos").classList.toggle("hidden", skipping);
       $("field-exon").classList.toggle("hidden", !skipping);
-      $("box-junction").classList.toggle("hidden", skipping);
       $("box-skip").classList.toggle("hidden", !skipping);
+      // Sinir kutusu iki tipte de gorunur (ayni onay kutusu); yalniz aciklamasi degisir
+      $("junctionHelp").classList.toggle("hidden", skipping);
+      $("junctionHelpSkip").classList.toggle("hidden", !skipping);
       if (skipping) { exonCiz(); exonVeriPlanla(true); }
     });
   });
@@ -500,6 +502,8 @@ function bindUI() {
   $("acc").addEventListener("change", () => exonVeriPlanla(true));
   $("skip_exon").addEventListener("input", exonCiz);
   $("exonBox").addEventListener("click", exonTikla);
+  // Sinir kutusu degisince ozetteki "primerler nereye konur" satiri da degisir
+  $("junction_overlap").addEventListener("change", exonCiz);
   exonCiz();
 
   // ---- Favoriler ekrani (2026-11-14) ----
@@ -662,7 +666,7 @@ function favTasarimKaydi(j, p) {
   } else if (tur === "atlama") {
     Object.assign(urun, { normal: p.product_size_normal, atlanmis: p.product_size_skipped, fark: p.band_difference });
   } else {
-    Object.assign(urun, { boy: p.product_size, gdna: p.gdna_product_size });
+    Object.assign(urun, { boy: p.product_size, gdna: rna && sinirdaPrimer(p) ? null : p.gdna_product_size });
   }
   return { tur, derleme: genomik || rna ? (i.assembly || ASSEMBLY) : "",
     gen: p.strand_gene || tx.gene || (v.forward.gene_region || {}).gene || "",
@@ -1296,15 +1300,22 @@ function exonOzetHtml(d, sec) {
     ? `<br><span class="ex-utr">${t("ex.utr")}</span>` : "";
   const not = `<br><span class="ex-not">${t("ex.not")}</span>`;
   const a = s[0], b = s[s.length - 1];
+  // Sinir kutusu isaretliyse primerlerin yeri degisir: biri secilen eksonlarin disindaki bir
+  // ekson sinirina oturur ("ekson a-1 ve b+1 icine konur" demek o zaman yanlis olurdu).
+  // Capa eksonlari transkriptin ilk ve son eksonuysa disarida sinir yoktur; motor o tasarimi
+  // reddeder (design_exon_skipping), ozet bunu tasarimdan once soyler.
+  const disSinirYok = a === 2 && b === n - 1;
+  const primer = !$("junction_overlap").checked ? t("ex.primer")
+    : (disSinirYok ? `<span class="ex-disi">${t("ex.primerSinirYok")}</span>` : t("ex.primerSinir"));
   if (s.length === b - a + 1) {
     const ad = a === b ? `${t("ex.ekson")} ${a}` : `${t("ex.ekson")} ${a}–${b} (${s.length} ${t("ex.ekson")})`;
     return `<b>${t("ex.secilen")}:</b> ${ad} · ${t("ex.atlanan")} ${uz(s)} bp · ${cer(s)}<br>` +
-      `${t("ex.primer", a - 1, b + 1)} ${t("ex.fark", uz(s))}${utr}${not}${disiHtml}`;
+      `${primer} ${t("ex.fark", uz(s))}${utr}${not}${disiHtml}`;
   }
   const satir = [...s.map((x) => [x]), s]
     .map((k) => `Δ${k.join("+")}: −${uz(k)} bp (${cer(k)})`).join(" · ");
   return `<b>${t("ex.secilen")}:</b> ${t("ex.ekson")} ${s.join(", ")} (${t("ex.bitisikDegil")}) · ` +
-    `${t("ex.primer", a - 1, b + 1)}<br><b>${t("ex.bantlar")}:</b> ${satir}${utr}${not}${disiHtml}`;
+    `${primer}<br><b>${t("ex.bantlar")}:</b> ${satir}${utr}${not}${disiHtml}`;
 }
 
 function exonCiz() {
@@ -1496,9 +1507,13 @@ function buildRequest() {
   if (RNA_MODE === "skipping") {
     const exon = $("skip_exon").value.trim();
     if (!exon) return { err: () => t("err.needExon") };
+    // Sinir kutusu Varyant tipiyle ortak: aciksa primerlerden biri secilen eksonlarin
+    // DISINDAKI bir ekson sinirina oturur (motor: design_exon_skipping)
+    const atlamaParams = collectParams();
+    atlamaParams.junction_overlap = $("junction_overlap").checked;
     return {
       path: "/design_skipping",
-      body: { assembly: ASSEMBLY, acc, exons: exon, params: collectParams() },
+      body: { assembly: ASSEMBLY, acc, exons: exon, params: atlamaParams },
     };
   }
 
@@ -2501,9 +2516,23 @@ function cdnaRow(dirKey, cls, x) {
 const rnaKonumCipi = (p, j) => konumCipi(((j && j.transcript) || {}).chrom, p.amplicon_genomic_start,
   p.amplicon_genomic_end, ((j && j.input) || {}).assembly);
 
+// Primerlerden biri ekson sinirini tasarim kuralindaki kadar asiyorsa (motor: junction_solid;
+// 3' tarafta >= 4, 5' tarafta >= 7 baz) o cift genomik DNA'dan urun vermez. Sinira bir iki bazla
+// degen primer gDNA'ya baglanabilir: o ciftte boy yazilmaya devam eder.
+const sinirdaPrimer = (p) => !!(p.forward.junction_solid || p.reverse.junction_solid);
+
+// RNA kartlarinda (Varyant ve ekson atlama) gDNA cipi. Sinirda primer varsa boy yazilmaz,
+// "cogalmaz" yazilir (boy yazmak yaniltirdi); yoksa genomik DNA'daki urun boyu (intronlar dahil).
+function gdnaCipi(p, ipucu) {
+  if (sinirdaPrimer(p)) {
+    return `<span class="chip chip-ok" title="${t("chip.gdna.noneTitle")}">${t("chip.gdna")}: <b>${t("chip.gdna.none")}</b></span>`;
+  }
+  return p.gdna_product_size
+    ? `<span class="chip" title="${t(ipucu)}">${t("chip.gdna")}: <b>${p.gdna_product_size.toLocaleString(yerel())} bp</b></span>` : "";
+}
+
 function renderCdnaPair(p, j) {
-  const gdna = p.gdna_product_size
-    ? `<span class="chip" title="${t("chip.gdna.title")}">${t("chip.gdna")}: <b>${p.gdna_product_size.toLocaleString(yerel())} bp</b></span>` : "";
+  const gdna = gdnaCipi(p, "chip.gdna.title");
   const junc = p.junctions_in_amplicon > 0
     ? `<span class="chip chip-ok" title="${t("chip.junctions.title")}">${t("chip.junctions")}: <b>${p.junctions_in_amplicon}</b></span>`
     : `<span class="chip chip-warn" title="${t("chip.noJunction.title")}">${t("chip.noJunction")}</span>`;
@@ -2535,8 +2564,7 @@ function renderSkipPair(p, j) {
     const yakin = new Set((p.band_close || []).flat());
     const chips = p.bands.map((b) => `<span class="chip ${yakin.has(b.size) ? "chip-warn" : "chip-ok"}" title="${t("chip.bandsTitle")}">Δ${b.exons.join("+")}: <b>${b.size} bp</b></span>`).join("");
     const yakinMetin = (p.band_close || []).map((c) => esc(t("ex.yakin", c[0], c[1]))).join(" ");
-    const gdna2 = p.gdna_product_size
-      ? `<span class="chip" title="${t("chip.gdna.titleSkip")}">${t("chip.gdna")}: <b>${p.gdna_product_size.toLocaleString(yerel())} bp</b></span>` : "";
+    const gdna2 = gdnaCipi(p, "chip.gdna.titleSkip");
     return `
     <div class="pair-card">
       <div class="pair-head">
@@ -2553,8 +2581,7 @@ function renderSkipPair(p, j) {
       ${specFooter(p)}
     </div>`;
   }
-  const gdna = p.gdna_product_size
-    ? `<span class="chip" title="${t("chip.gdna.titleSkip")}">${t("chip.gdna")}: <b>${p.gdna_product_size.toLocaleString(yerel())} bp</b></span>` : "";
+  const gdna = gdnaCipi(p, "chip.gdna.titleSkip");
   return `
     <div class="pair-card">
       <div class="pair-head">
@@ -3146,8 +3173,10 @@ function renderEvaluationCdna(j) {
   let urun = "";
   if (j.product) {
     const u = j.product;
-    const gd = u.gdna_size
-      ? `${u.gdna_size.toLocaleString(yerel())} bp`
+    // Primerlerden biri ekson sinirinin uzerinde ve iki yaninda yeterli bazi varsa (motor:
+    // product.gdna_none) genomik DNA'dan bant cikmaz: boy yazilmaz
+    const gd = u.gdna_none ? t("chip.gdna.none")
+      : u.gdna_size ? `${u.gdna_size.toLocaleString(yerel())} bp`
       : "—";
     urun = `
       <h4>${t("ev.cdna.product")}</h4>
@@ -3377,7 +3406,7 @@ function exportCsv() {
            Math.min(x.genomic_start, x.genomic_end), Math.max(x.genomic_start, x.genomic_end),
            t(x.spans_junction ? "csv.yes" : "csv.no"), x.hairpin_tm, x.self_dimer_tm,
            x.self_dimer_3p_tm, (x.snps || []).length, snpText(x),
-           p.product_size, p.gdna_product_size, p.junctions_in_amplicon,
+           p.product_size, sinirdaPrimer(p) ? "" : p.gdna_product_size, p.junctions_in_amplicon,
            ...(j.mode === "exon_skipping"
              ? [p.product_size_normal, p.product_size_skipped, p.band_difference,
                 j.input.exons || j.input.exon, bantMetni(p)] : []),

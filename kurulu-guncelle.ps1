@@ -43,6 +43,7 @@ $dosyalar = @(
     @{ k = "electron\main.js";               h = "main.js" },
     @{ k = "electron\preload.js";            h = "preload.js" },
     @{ k = "electron\favoriler.js";          h = "favoriler.js" },    # main.js require eder
+    @{ k = "electron\sagTik.js";             h = "sagTik.js" },       # main.js require eder
     @{ k = "electron\package.json";          h = "package.json" },   # SURUM buradan okunur
     @{ k = "electron\renderer\index.html";   h = "renderer\index.html" },
     @{ k = "electron\renderer\app.js";       h = "renderer\app.js" },
@@ -73,12 +74,12 @@ foreach ($d in $dosyalar) {
 }
 Write-Host "Arayuz: $degisen dosya guncellendi, $($dosyalar.Count - $degisen) zaten ayniydi."
 
-# ---- 1b) Lisans dosyalari + KURULUM.txt: uygulama klasorunun KOKUNE ---------
+# ---- 1b) Lisans dosyalari + KURULUM.txt / USER_GUIDE.txt: uygulama klasorunun KOKUNE
 # Klasor kopyalandiginda lisans ve telif bildirimleri de gitmeli (MIT/BSD/Apache
 # bunu sart kosar). THIRD-PARTY-NOTICES.txt backend\lisans_bildirimi.py ile uretilir.
 # LICENSE-GPL-3.0.txt: motordaki Apache-2.0 bilesenler (requests, OpenSSL) GPL v2 ile
 # uyumsuz, GPL v3 ile uyumlu; program kurum disina GPL v3 ile verilir (2026-10-31).
-foreach ($ad in @("LICENSE", "LICENSE-GPL-3.0.txt", "AUTHORS", "THIRD-PARTY-NOTICES.txt", "KURULUM.txt")) {
+foreach ($ad in @("LICENSE", "LICENSE-GPL-3.0.txt", "AUTHORS", "THIRD-PARTY-NOTICES.txt", "KURULUM.txt", "USER_GUIDE.txt")) {
     $src = Join-Path $kaynak $ad
     $dst = Join-Path $uygulama $ad
     if (-not (Test-Path $src)) { Write-Host "  kaynakta yok: $ad" -ForegroundColor Yellow; continue }

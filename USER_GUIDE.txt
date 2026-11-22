@@ -1,0 +1,655 @@
+ALLPRIME - PRIMER DESIGN TOOL
+=============================
+(Turkish version of this guide: KURULUM.txt)
+
+SYSTEM REQUIREMENTS
+-------------------
+The figures below were measured on a Windows 11 computer with 24 logical cores and
+16 GB of RAM (Electron interface, engine and scan workers together). The program was
+also used on a Windows 10 computer with 4 GB of RAM: DNA, RNA and Breakpoint
+(duplication) designs worked without problems, and the genome scan took longer. Time
+and memory were not measured there; values that were not measured are marked as such.
+
+ - Operating system : Windows 10 or 11, 64-bit (the interface is Electron 44, which
+                      needs Windows 10 or later). Tried on: Windows 11 and Windows 10.
+ - RAM              : 8 GB recommended, 4 GB minimum. Measured: about 0.4 GB at start
+                      and when idle; during the "Best specific pair" scan (12 workers)
+                      at most about 2.1 GB is committed (working set about 2.0 GB);
+                      after the scan it drops to about 0.6 GB. About 130 MB is
+                      committed per worker; on a computer with fewer workers the peak
+                      is lower. It ran on a Windows 10 computer with 4 GB of RAM;
+                      memory was not measured there.
+ - Processor        : The number of scan workers is the smaller of the core count and
+                      12. Fewer cores mean a longer scan. On 24 cores (12 workers) the
+                      best-specific-pair scan of one target took 9-52 s (TP53 24 s,
+                      CYP21A2 9 s, SORD 26 s, GABARAP 52 s). Not measured on fewer cores.
+ - Disk             : About 3.3 GB per genome assembly; about 7.0 GB for both
+                      assemblies and all data, so 8 GB of free space is recommended.
+                      Items:
+                        Installed application (AllPrime.exe, interface, engine, source code) : 0.4 GB
+                        Genome FASTA (.fa), per assembly                                     : 3.15 GB
+                        Genome index (.fai), per assembly                                    : a few KB
+                        dbSNP common-variant index, per assembly                             : 0.14 GB
+                        refGene (both assemblies) + MANE summary, total                      : 0.02 GB
+ - Network          : Once the data files are on the computer no internet connection
+                      is needed to work; it is needed only while downloading the files.
+
+
+INSTALLATION
+------------
+1. Copy this whole folder to the computer (for example C:\AllPrime\).
+
+   IMPORTANT: Extract / copy the folder to a place CLOSE TO THE DRIVE ROOT.
+   The deepest file path inside the program is 142 characters; because of the
+   Windows 260-character limit, extracting into a very deep folder (for example
+   Desktop\New folder\Backup\...) gives a "path too long" error and files go missing.
+   A short path such as C:\AllPrime\ is always safe.
+2. Get the data files. THERE ARE TWO WAYS:
+
+   a) DOWNLOAD THEM FROM INSIDE THE APPLICATION (the easy way)
+      Start the program, press the "⚙ Settings" button at the top right, open the
+      "Data files (download)" section and press "Download" next to the missing items.
+      Genomes come from Ensembl, the others from UCSC/NCBI. Downloads resume where
+      they stopped; a dropped connection does not restart them from the beginning.
+
+      The time depends on your connection. On a slow line (~0.4 MB/s) all files can
+      take 1.5-2 hours; on a fast network much less. It runs in the background.
+
+   b) COPY THE FILES BY HAND (faster on a slow connection)
+      Copy the genome files INTO THIS FOLDER as a folder named "genomes":
+
+       AllPrime\
+         AllPrime.exe
+         genomes\                              <-- here
+           Homo_sapiens.GRCh37.dna.primary_assembly.fa
+           Homo_sapiens.GRCh37.dna.primary_assembly.fa.fai
+           Homo_sapiens.GRCh38.dna.primary_assembly.fa
+           Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai
+         resources\
+
+   Because of their size (~3 GB each) the genome files are not included in the package.
+   Do not forget to copy the .fai index files that sit next to the .fa files.
+
+3. Run "AllPrime.exe".
+   On first launch the window may take 20–50 seconds to appear, with nothing on
+   screen meanwhile. Wait; do not start the program a second time. Later launches
+   take a few seconds.
+
+At start-up the program finds the genomes folder by itself. If it does not, you can
+point to the files by hand under "Genome files (local FASTA)" on the "⚙ Settings"
+screen; the choice is saved. Before using a genome the program checks it: the file
+must match its index, must not be a partial copy, and chromosomes 1–22, X, Y and MT
+must be present at the known lengths of the selected assembly. An incomplete or
+truncated genome is not used (so that it cannot give a false "specific" result); the
+reason is shown in Settings. In that case download or copy the genome again. The
+mitochondrial sequence must be rCRS (16,569 bp) in both assemblies; the old chrM
+sequence of UCSC hg19 (16,571 bp) is not accepted. A compressed FASTA (.gz) cannot be
+used either: decompress it (.fa) first; a genome downloaded from the Data files panel
+is already decompressed.
+
+If no genome is configured the program falls back to the Ensembl REST API. This
+needs an internet connection and is slow; no patient data is sent, the genomic
+coordinate is queried (if the transcript table is also missing and the position was
+given by gene symbol, the gene symbol is queried too).
+
+
+START-UP NOTICE AND LANGUAGE
+----------------------------
+On first launch the program shows the notice and disclaimer. The screen does not ask
+for consent: you read the text and press "Got it, continue". The fact that the notice
+was shown is stored on this computer only, together with the notice text version and
+the date (no user name and no computer name are stored); no data leaves the computer.
+If the notice text is updated it is shown once more.
+
+On the same screen you choose the language: Turkish or English. To change it later
+use the TR / EN button in the top bar or "⚙ Settings". The whole interface, error
+messages, warning notes and CSV headers appear in the selected language.
+
+The last two columns of the CSV files (DNA, RNA, Breakpoint) are "Assembly" and
+"Chromosome". Because the RNA tab always uses GRCh38, the assembly in an RNA file is
+GRCh38. In two-sequence mode, when the distance is unknown the "Amplicon_note" column
+says so; for a deletion the "SecondBand_status" column gives the status of the normal
+allele band relative to your product limit.
+
+To read the notice text again later, open "Licence and disclaimer" in the About
+section of the "⚙ Settings" screen.
+
+
+SETTINGS
+--------
+The "⚙ Settings" button at the top right opens the settings screen; "← Back to
+design" or Esc closes it. Choices are stored on this computer only.
+
+ - Theme          : Dark, Light or Follow Windows (follows the Windows light / dark
+                    setting). The start-up notice screen uses the selected theme too.
+ - Interface size : 90% - 150%. Text, buttons and tables grow together (projector,
+                    high-resolution screen). In a small window tables scroll sideways
+                    inside the card. From the keyboard Ctrl + Plus enlarges by one
+                    step, Ctrl + Minus reduces, Ctrl + 0 returns to 100%; the choice
+                    is shown here and saved.
+ - Laboratory defaults:
+                    The reference genome at start-up, the longest amplifiable product
+                    and the advanced parameters (Mg²⁺, salt, dNTP, DMSO, primer
+                    length, Tm ...). Enter the values under "Advanced parameters" and
+                    press "Make these values the laboratory default"; the program
+                    starts with these values every time. "Restore factory values"
+                    deletes the saved values. The genome selection in the top bar
+                    applies to that session only.
+ - Data files and genome: download and local FASTA selection.
+ - About          : version, installed data files, data sources and the licence text.
+
+
+USAGE
+-----
+DNA · genomic tab
+   A genomic coordinate is given and primers are designed directly on the genome.
+
+   Two forms can be typed into the position box:
+     - Single coordinate  : 7676154            (point variant)
+     - Range              : 7676154-7676208    (the whole variant)
+
+   If the variant is longer than a few bases (indel, delins) enter a RANGE. With a
+   single coordinate the tool cannot know how many bases the variant spans and a
+   primer may fall inside the variant; that primer does not bind the variant allele
+   and a heterozygous sample looks homozygous. Measured: when only the start of a
+   120 bp deletion was given, 5 of 20 primers fell inside the variant.
+
+   With a range, primers are placed outside the whole range plus a margin of "Min
+   distance to variant" on each side. The form "chr2:50,000,001-50,000,300" is
+   accepted too. If the variant is too long to fit in one product you are told so.
+
+   For deletions and duplications the Breakpoint tab is more suitable: it places
+   the primers outside the region and gives the mutant and normal bands together.
+
+   PRIMER NAMES (F / R): Forward and Reverse are named by the reading direction of
+   the gene. For genes on the minus (−) strand (TP53, BRCA1 ...) Forward is the
+   primer with the larger coordinate; the product sequence is shown in the gene's
+   direction too. A Sanger read from Forward runs in the same direction as the c.
+   sequence, a read from Reverse is its reverse complement. The note above the
+   results says so; the summary line gives the gene's strand. The Breakpoint tab
+   follows the same rule; positions are always genomic. In the Evaluate tab the
+   pair's product also starts from Forward (see the Evaluate tab).
+
+   THE POSITION YOU ENTERED: under the "Product sequence" button the coordinate you
+   entered is marked in a separate colour; the legend gives the position and which
+   base of the product it is. If you entered a range the whole range is marked.
+   For a gene on the minus strand the sequence is shown in the gene's direction, so
+   the marked base is the complement of the base on the + strand of the genome. In
+   the RNA tab the c. position is marked, in the Sequence tab the target. In the
+   Breakpoint tab the bases on either side of the junction line are marked, and for
+   a small duplication with outer primers the entered region. The exon-skipping
+   assay, a sequence without a target and two-sequence mode have no single position,
+   so nothing is marked.
+
+RNA · cDNA tab
+   A transcript accession (NM_) is given; the template is intron-free cDNA. The
+   version number is ignored. If you do not know the NM accession you can search by
+   gene symbol; the MANE Select transcript is flagged. This tab always builds the
+   transcript from the GRCh38 genome (MANE is defined on GRCh38); even when GRCh37
+   is selected at the top, the positions shown are GRCh38. For a transcript whose
+   coding region looks inconsistent (for example TNNI3) an alignment warning
+   appears: c. and exon numbers may be shifted relative to the NM sequence; compare
+   with the NM sequence or design by genomic coordinate in the DNA tab.
+
+   - Variant (c.)        : the forms c.1234 / c.-45 / c.*120 are supported. If a
+                           reference base written as in c.524A>G does not match the
+                           base in the transcript, a warning appears in the result
+                           (including spaced notation and the target in the RNA
+                           mode of Evaluate). Intronic positions (c.123+45) do not
+                           exist in mRNA and are not accepted; use the DNA tab.
+
+   - Exon skipping assay : Primers are placed in exons on either side of the exons
+                           to skip that fit the product-size range and the primer
+                           criteria (not always the nearest neighbouring exon; the
+                           card shows which). When you enter the transcript
+                           accession the exons appear as buttons: click to select
+                           (Shift+click selects a range) or type in the box:
+                           5, 4-6 (adjacent), 4,6 (not adjacent). The first and last
+                           exon cannot be selected. The normal transcript gives the
+                           longer product, the skipped transcript the shorter one;
+                           the difference equals the total length of the skipped
+                           exons. For non-adjacent exons the bands seen when each
+                           exon is skipped alone and when all are skipped together
+                           are shown separately; bands that are very close (a
+                           difference below 20 bp or 5% of the larger band; this
+                           threshold is a design choice) are flagged with a warning.
+                           The summary also says whether the reading frame is kept.
+
+In RNA mode the size of the product on gDNA is shown for each pair as well; it is
+used to tell genomic DNA contamination apart on a gel.
+
+Both design types have the box "Place one primer across an exon junction" (off by
+default). When it is on, one primer sits across an exon-exon junction and does not
+bind genomic DNA; the choice of primers narrows, so sometimes no pair is found, and
+the program says so. In the exon-skipping assay this primer is placed on a junction
+that is not adjacent to the exons to skip: the normal and skipped bands are still
+seen together. It is useful when the gDNA product is short enough to amplify.
+
+If one primer crosses an exon junction far enough, that pair gives no product from
+genomic DNA: the card and the RNA mode of Evaluate show "no product" instead of the
+gDNA size, and the gDNA column in the CSV is left empty. On the design cards "far
+enough" means at least 4 bases on the 3' side of the junction and at least 7 on the 5'
+side (every pair when the box is on, some pairs when it is off); Evaluate requires at
+least 4 bases on each side of the junction. A primer that only touches a junction by a
+base or two can still bind genomic DNA; for that pair the gDNA size is still shown.
+
+Sequence tab
+   No genome or transcript is needed; you paste the sequence directly. A FASTA
+   header, spaces, line numbers and lower case are not a problem; they are cleaned
+   automatically.
+
+   - Single sequence : Primers are searched on the given sequence. You can mark the
+                       target with square brackets:  ...ACGT[A/G]TTTC...
+                       Or you can type the target position instead (1234 or
+                       1200-1260). If neither is given the whole sequence is free;
+                       in that case the sequence can be at most 50,000 bp (the
+                       calculation takes very long on a longer one). With a target
+                       there is no length limit.
+
+   - Two sequences   : The forward primer is chosen from the FIRST sequence and the
+                       reverse primer from the SECOND; neither spills into the
+                       other. This mode has no variant/target; it is the way to say
+                       "find a forward in this sequence and a reverse in that one".
+                       Fusion transcripts (forward in gene A, reverse in gene B) and
+                       deletion breakpoints are designed with this mode too.
+
+                       The sequences are assumed to be adjacent by default. If the
+                       two sequences are the two ends of one product, you did not
+                       paste the part in between but you know its length, open
+                       "Distance between the two sequences" and type it. In all
+                       other cases you do not need to touch it.
+
+                       IMPORTANT: If you do not know how far apart the two sequences
+                       really are, tick "Distance unknown — do not apply the product
+                       size limit". Otherwise the amplicon range (180-650 bp by
+                       default) pulls the primers towards the point where the
+                       sequences meet, and good primers at the far ends are dropped.
+                       For a fusion / breakpoint leave the box OFF - there the
+                       product size is real.
+
+   This tab has no genomic coordinate, so dbSNP avoidance is not applied.
+   The specificity check does work and is meaningful: a fusion pair is expected to
+   give NO product from a healthy genome.
+
+Breakpoint tab
+   The boundaries of the deletion or duplication are entered: chromosome, start, end
+   (the first and last base of the deleted / duplicated region). The form
+   "chr2:50,000,001-50,012,000" can be pasted into the start box; the boxes fill in
+   by themselves.
+
+   - Deletion      : Primers are placed on either side of the deleted region
+                     (gap-PCR). The deletion allele gives a short breakpoint
+                     product; the breakpoint is inside the product and is read by
+                     Sanger. If the deletion is small the normal allele gives a
+                     (longer) band too.
+   - Duplication   : For a tandem duplication the primers are placed inside the
+                     region, near the ends and facing OUTWARDS; they give a product
+                     only from the junction of the two copies (its size does not
+                     depend on the size of the duplication). They do not detect
+                     inverted copies or copies inserted elsewhere: a negative result
+                     does not rule out a duplication. For a duplication smaller than
+                     1.5 kb, outer primers and the size difference are used.
+   - Uncertainty   : If the boundaries come from an approximate method such as MLPA,
+                     array or exome, enter ± bp; the primers are placed on the safe
+                     side of all possible breakpoints and the band size is given as
+                     a range.
+   - Control primer (optional, off by default): for a deletion, the normal allele
+                     band (heterozygous / homozygous distinction); for a large
+                     duplication, a control band showing that the PCR worked. If no
+                     control primer can be found at one end of the region it is
+                     searched at the other end; a candidate whose hairpin
+                     temperature does not exceed 5 °C below the suggested Ta is
+                     chosen. If there is no such candidate, the card shows a
+                     hairpin warning for the control primer.
+
+   For each pair the bands expected for each genotype are shown in a table. Primers
+   are kept at least 100 bp away from the breakpoint so that the breakpoint reads
+   well in the Sanger trace.
+
+Evaluate tab
+   Examines a primer pair you already have; it does not design new primers. It tells
+   you where the pair sits in the genome, what product it gives and, if it gives
+   none, why. Write the primers 5'→3'; if Reverse is left empty only Forward is
+   examined (in DNA and RNA mode): the primer's own properties and placement are
+   evaluated, without a product or pair diagnosis. The result is calculated with
+   the reference genome selected at the top (GRCh38 / GRCh37).
+
+   - DNA (genomic) : The primers are searched in the whole genome (a local genome
+                     file is needed). The binding sites of each primer in the genome
+                     (position, orientation, mismatched bases, gene, exon / intron)
+                     and the predicted products of the pair are listed. If a common
+                     variant (dbSNP) lies where a primer sits, its rs number appears
+                     in the table and in the findings (allele dropout risk): a
+                     variant 5 bases or closer to the 3' end counts as a problem,
+                     a more distant one as a warning.
+   - RNA / cDNA    : A transcript accession (NM_) is needed; if you do not know it,
+                     type the gene symbol and press "Find by gene"; MANE Select is
+                     flagged. A cDNA primer that sits across an exon junction does
+                     not exist in one piece in the genome, so DNA mode gives it a
+                     false alarm; this mode works on the transcript. For each primer
+                     the cDNA position and exon are shown, and for the product the
+                     cDNA band, the gDNA band and the number of exon junctions it
+                     spans.
+
+   The result screen starts with a three-level verdict: "No problems found",
+   "Points to watch" or "Serious problem". The findings just below come in the order
+   problem / warning / information; then the primer properties (Tm, GC, hairpin,
+   self and dimer scores, ΔTm, suggested Ta).
+
+   In the predicted products table, the product where both primers match fully is
+   marked "target". Other products get high (0-2), medium (3-5) or low (6+) risk by
+   the total number of mismatches in the two primers (the same measure as in the
+   specificity check); low-probability ones are behind the button that shows them.
+   "Combination" is the order of the primers in the genome: F+R or R+F is the pair's
+   own product, F+F and R+R are side products formed when one primer binds two
+   separate places in opposite orientations. The "Product sequence" button shows the
+   amplified sequence with the primers marked. For the pair's own product the
+   sequence always starts from Forward; if the primers are in the opposite order in
+   the genome (R+F) the reverse complement is shown and this is written above the
+   sequence. For an F+F / R+R product the sequence is in its genomic direction and
+   both ends are marked with that primer's name. If the target product is above
+   your "Longest amplifiable product" limit a warning is given.
+
+   F and R are expected to follow the reading direction of the gene. If the primer
+   you gave as "Forward" reads against the gene, the warning "F and R roles are
+   swapped" appears; if the product does not overlap a gene the + strand of the
+   genome is used, and in RNA mode the direction of the transcript. It does not
+   affect the PCR, but it misleads your records: swapping the two sequences is
+   enough. If the copy of a gene with a pseudogene is in the opposite orientation
+   (such as PMS2/PMS2CL) the role is decided by the product at the gene's own locus;
+   if the pair sits in the opposite orientation at copy loci a short information
+   note says so.
+
+   If you type chr19:11537002, or c.215 in RNA mode, into the optional "Variant
+   position" field, that position is marked in the product sequence. If the position
+   is not inside any product (another chromosome or outside the product) nothing is
+   marked and an information note says so. An unknown chromosome prefix (chrZZ:) and
+   a RefSeq accession that does not match the selected assembly (NC_000017.10: with
+   GRCh38) give an error; the rules are the same as for the position field in
+   design. The forms NC_000017.11:g.7676154 and NC_000017.11:7676154-7676160 are read
+   the same as their chr17: equivalents.
+
+   The "Evaluate" button on design cards opens the pair in this tab: the sequences,
+   the variant position and (in cDNA mode) the transcript accession are filled in
+   automatically, and your design results are not lost.
+
+
+FAVORITES
+---------
+You can save a pair you intend to use, to look at it later. Every design card and
+every Evaluate result has a "☆ Add to favorites" button. Pressing it opens an
+optional note field; "Save" adds the pair and the button becomes "★ In favorites"
+(pressing it again asks whether to remove it from favorites).
+Do not write a patient name or identifier in the note field.
+
+The "★ Favorites" button in the top bar opens the list (the number next to it is
+the number of entries). Each entry holds the date, tab, reference genome, the
+position you entered, the primers (can be copied), product / band sizes, suggested
+Ta and your note. The search box searches in gene, position, primer sequence and
+note. "Open in Evaluate" re-evaluates the pair in the Evaluate tab; for a genomic
+entry the reference genome in the top bar switches to the entry's genome. Breakpoint
+entries do not have this button: Evaluate examines a pair on the reference genome,
+whereas these pairs are designed for the rearranged allele; a result on the reference
+does not describe the assay.
+"Download list as CSV" gives one row per primer; you can transfer it to your
+laboratory's primer list.
+
+Favorites are stored on this computer only, in the file
+%APPDATA%\AllPrime\favoriler.json; nothing is sent anywhere. Updating the application
+does not touch this file. To back it up or move it to another computer, copy this
+file. If the file is damaged it is not deleted: when you add a new pair it is moved
+next to it under the name favoriler.bozuk-<date>.json.
+
+
+LONGEST AMPLIFIABLE PRODUCT
+---------------------------
+"Longest amplifiable product (bp)" under Advanced parameters (and in "⚙ Settings")
+is the longest product your laboratory reliably amplifies by PCR. The default is
+700 bp; a laboratory that amplifies longer products raises this value. Like the
+language choice, the setting is stored on this computer and is not reset at each
+start.
+
+How it differs from "Amplicon max": the amplicon range (min/max) is the target size
+you ask primer3 for in that design. This limit is a ceiling and applies in every
+tab — including the exon-skipping assay, which calculates its own amplicon range. It
+is also the measure used for bands primer3 does not choose, that is the normal
+allele / control / duplication bands at a breakpoint; the amplicon range has no
+effect there. If the two conflict the smaller one applies and you are told in a note
+(for example with amplicon max 2000 and a limit of 700, products do not exceed
+700 bp).
+
+This limit is YOUR protocol, not an absolute statement about PCR. The program does
+not say "nothing above this size amplifies"; it says "above your limit" and notes
+that with a protocol that amplifies longer products that band may be seen too. When
+another laboratory raises the limit, the same band counts as "within your limit".
+
+Effects:
+ - No tab proposes a product longer than this.
+ - In the Evaluate tab a warning is given if the target product is above this limit,
+   with a note that the band may be seen with a protocol that amplifies longer
+   products.
+ - In the Breakpoint tab the normal allele, control and duplication bands are
+   flagged accordingly. They are not removed from the band table; the size is shown
+   with the note "above your limit" / "far above your limit" next to it.
+ - If for a small duplication the band with outer primers does not fit the limit, a
+   short junction product with outward-facing primers is designed instead and the
+   reason is given.
+ - If the uncertainty margin would push the product over the limit, you are told the
+   largest margin (in bp) that works with this limit.
+ - In the exon-skipping assay, if the target exon is long enough to push the normal
+   transcript's product over the limit, this is stated clearly.
+
+
+PSEUDOGENE / NEAR-IDENTICAL COPY WARNING
+----------------------------------------
+Some genes have an almost identical twin in the genome (such as PMS2/PMS2CL,
+CYP21A2/CYP21A1P, NCF1/NCF1B, HBA1/HBA2). A primer designed in such a gene may give
+a product from the copy as well; if both loci amplify together the patient's variant
+is diluted, or the sequence of the copy is attributed to the patient.
+
+When the program notices that you are working in such a gene it shows a warning
+above the results: it gives the name of the copy, its chromosome and the similarity.
+You do not have to enter a gene name; it is found from the coordinate.
+
+The copy is not always a pseudogene; often it is a separate gene (gene families such
+as ADH1A/B/C, MYH6/MYH7). The warning distinguishes the two. In gene families the
+similarity is usually concentrated in the exons while the introns have diverged; in
+that case only primers sitting on exons are affected, and the warning says so.
+
+The warning is not a verdict — the specificity scan tells which pair really gives a
+product from the copy too: in DNA mode look at the automatic badges on the cards, in
+the other modes press "Check specificity". For these genes do not order primers
+before you have seen the result.
+
+Pairs that separate from the copy: for a DNA design in a gene with a warning, all
+candidates that meet the rules are scanned in the genome (see "Best specific pair"
+below). If the best specific pair is outside the list, it is listed in the section
+"Pairs that separate from the copy" above the cards, together with the first 8
+specific pairs. "Pool rank" is the pair's place in the program's ranking; a pair
+"outside pool" is outside the first 1,000 candidates from which the list is chosen.
+The "Evaluate" button takes the pair to the Evaluate tab. The normal list and its
+order do not change. If automatic specificity checking is off, the search is started
+with the button in that section. If there is no specific pair at all, the gene and
+the copy may be too similar in that region (as in SMN1); the program shows the three
+least risky pairs. In that case read the product by Sanger and check from the
+distinguishing bases which copy it came from.
+
+Most of the pairs found separate from the copy by a single base at the 3' end of a
+primer: the scan counts a primer that differs from the copy in one of its last 6
+bases as "not binding" at the copy. The closer the difference is to the end, the
+stronger the separation, but a single difference does not always stop the copy from
+amplifying completely. Therefore, for these genes, read the product by Sanger and
+check which copy it came from.
+
+The "Difference from copy" column in the table says in which primer the difference
+is and at which base from the 3' end (for example "R: last 3' base"); if there are
+several differences in the copy their number is given too. "Very different" means
+that there is no binding in the copy regions that would give a product with at most
+5 mismatches. If you have a choice, prefer a "Very different" pair or the pair whose
+difference is closest to the 3' end. Hovering over the cell shows the location of
+the possible product in the copy.
+
+The "Specific" label says that the scan found no product from the copy; it is not a
+laboratory-confirmed result.
+
+The list was produced by measuring candidate pairs derived from gene names against
+the local genome file: what percentage of 500 bp windows taken from the gene is at
+least 90% similar in the copy? In copies that keep their introns genomic design is
+affected as well; in intronless (processed) pseudogenes only primers sitting on
+exons are affected, and the warning distinguishes this.
+
+
+WHERE IN THE GENE A PRIMER SITS (exon / intron)
+-----------------------------------------------
+In the DNA and Breakpoint tabs there is a "Gene region" column next to each primer:
+exon 7, intron 7 or the boundary between the two. It is shown for the control primer
+as well.
+
+The exon number depends on which transcript you take as the basis. The program
+prefers the MANE Select transcript; hovering over the cell shows the gene name, the
+transcript accession and the total number of exons. It is written to the CSV too.
+
+A label such as "exon 8 / intron 8 boundary" says that the primer crosses the
+boundary. This is not a problem in genomic design (the template is gDNA), but you
+need to know it if you think of using the same primer on cDNA: there is no intron
+there.
+
+For genes on the minus strand (such as TP53) the two ends of an exon are next to
+different introns; the program distinguishes this correctly.
+
+
+FINDING THE PRIMERS IN IGV
+--------------------------
+The second line of DNA, RNA and Breakpoint cards gives the genomic range covered by
+the primers (for example "Position: chr7:117,559,410–117,559,715"). At a breakpoint
+the range includes the control primer; in RNA it is the location of the product in
+the genome (including introns). The "Copy for IGV" button next to it copies the
+range in the form the IGV and UCSC search boxes understand
+(chr7:117559410-117559715). In IGV the card's reference genome must be open: hg38
+for GRCh38, hg19 for GRCh37 (shown in the button's tooltip; the RNA tab always uses
+GRCh38). DNA and Breakpoint entries on the Favorites screen have the same line. The
+Sequence tab has no genomic coordinate, so this line does not appear there.
+
+
+COMMON VARIANT (dbSNP) AVOIDANCE
+--------------------------------
+If a common variant lies where a primer binds, that allele does not amplify and a
+heterozygous patient looks HOMOZYGOUS. The program automatically excludes these
+positions during design; a primer never sits there. You do not need to press a
+button for this; it runs in every design.
+
+If the region is very dense in common variants and no suitable primer is left, the
+constraint is relaxed automatically and you are told in a warning above the results.
+In that case look at the "SNP" column in the table: hovering shows the rs number,
+the MAF and how many bases the variant is from the 3' end of the primer. Those close
+to the 3' end (5 bases or fewer) are marked in red - they are the most dangerous.
+
+Untick "Keep primers off common variants (dbSNP)" only deliberately (for example for
+an allele-specific primer). When it is off, variants are still reported; they are
+just not avoided.
+
+
+SPECIFICITY CHECK
+-----------------
+The "Check specificity" button under each result card scans whether that pair gives
+unwanted products in the genome. A whole-genome scan takes about 2-3 seconds per
+pair.
+
+In DNA mode this is also done automatically: the results are shown at once, then the
+pairs are scanned one by one in the background and a badge is added to the top of
+each card: "Specific", "Medium-risk side product" or "High-risk side product".
+Hovering over the badge shows the location, size and number of mismatches of the
+riskiest product. Badges are only marks: no pair is dropped and the order does not
+change. A pair that is not specific may still be the best candidate; the choice is
+yours. If you do not want this, untick "Check specificity automatically" (the
+preference is remembered). In the other modes (RNA/cDNA, exon skipping, sequence,
+breakpoint) no automatic scan is done; use the button. For a pair that was scanned
+automatically the button opens the details at once.
+
+Best specific pair: the list is chosen by taking the first 1,000 of primer3's
+candidates that meet the rules and ranking them by primer length, self/dimer and a
+preference for a short product; specificity does not enter the ranking. When the
+badges are finished the program scans all candidates that meet the rules (usually
+tens of thousands of pairs) in the genome in a single pass. "Best" is decided in
+this order: first being specific (no high- or medium-risk side product within 3 kb),
+then the same criterion that ranks the list. The list and its order do not change;
+if the best specific pair is not pair 1, a separate box opens above the cards:
+  - if it is in the list, its rank is given (the "Go to pair ..." button takes you
+    to the card);
+  - if it is not in the list, the pair itself is shown; the "Compared with pair 1"
+    column gives the difference (primer length deviation, dimer, product size);
+  - if pair 1 is specific but outside the list there is a specific pair with a
+    better score under the same rules, it says "A better specific pair exists";
+  - if there is no specific pair at all, the three least risky pairs are shown
+    (first fewest high-risk, then fewest medium-risk side products).
+If pair 1 is already the best, no box opens. The scan runs in the background, mostly
+takes 10-60 seconds per target (longer with few cores; a few minutes in dense repeat
+regions) and needs a local genome file. A new design stops the scan. If automatic
+checking is off no scan is done; if you turn it on later it starts for the last
+design. The "Specific" label says that the scan found no side product; it is not a
+laboratory-confirmed result.
+
+The result comes in three risk levels. The level is set by the number of mismatched
+bases where the primers bind (the total of the two primers):
+
+   high   (0-2 mismatches)  : really expected to amplify, take it into account
+   medium (3-5)             : unlikely
+   low    (6+)              : does not amplify in practice, listed for information
+
+"F+R" is the classic side product. "F+F" and "R+R" are real risks too: they form
+when the same primer binds two separate places in opposite orientations.
+
+The scan finds the places where the last 6 bases at the 3' end of a primer match
+exactly. This is deliberate: a primer whose 3' end does not hold is not extended, so
+no PCR product forms there.
+
+Because of this rule the Evaluate tab also looks at nearby places that are not in
+the list: if the pair can give a product somewhere with only 1-2 base differences
+and the difference is in the last 6 bases of a primer (common in pseudogenes), the
+note "Differs from a copy by a single base only — be cautious" appears under the
+product table. The note gives the location, the product size and in which primer and
+at which base from the 3' end the difference is. A single-base difference is a weak
+separation: use a non-proofreading Taq and read the product by Sanger to check which
+copy it came from.
+
+Note: this check uses the local genome file. If no genome is configured (the program
+has fallen back to Ensembl API mode) the specificity check cannot be done.
+
+
+NOTES
+-----
+- Tm calculation: primer3, SantaLucia 1998 NN + salt/Mg/dNTP corrections.
+- Self / dimer values are complementarity scores showing how strongly a primer can
+  stick to itself and to the other primer; a low value is good (self threshold 8,
+  3' end threshold 3).
+- Transcript tables: UCSC refGene (hg19/hg38) + NCBI MANE (the Data files panel
+  takes the MANE version that is current at download time; the local file carries
+  no version number).
+- All calculation is done on the local machine; no data is sent anywhere.
+
+
+CONTACT AND CITATION
+--------------------
+Questions, suggestions and bug reports: eren.501kilinc@gmail.com
+Website: https://allprime-app.github.io/
+When reporting a bug do not send personal data such as a patient name or identifier;
+the program's version number and the input that gave the error are enough.
+
+If you use AllPrime in your work, please cite it. Suggested form:
+  Kılınç E. AllPrime: a variant-specific primer design tool (the version you used). 2026.
+  https://allprime-app.github.io/
+
+
+LICENCE AND SOURCE CODE
+-----------------------
+AllPrime © 2026 Eren Kılınç. The program is licensed under the GNU GPL version 2 or
+(at your option) any later version and comes with no warranty. Because the packaged
+engine contains Apache-2.0 licensed components (requests, OpenSSL), the program is
+given outside the institution under the terms of GPL v3, which is compatible with
+them. Licence texts: LICENSE (GPL v2) and LICENSE-GPL-3.0.txt (GPL v3). The licences
+of third-party components are in THIRD-PARTY-NOTICES.txt.
+
+The program's source code (engine, interface and build scripts) is in this folder:
+kaynak\AllPrime-kaynak-<version>.zip. Do not delete this file when you give the
+folder to someone else: the GPL (v2 Section 3, v3 Section 6) requires the source to
+be given together with the program.

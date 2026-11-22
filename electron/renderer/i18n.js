@@ -18,7 +18,8 @@ const I18N = {
     "app.notice":
       "AllPrime © 2026 Eren Kılınç. Bu program GNU Genel Kamu Lisansı (GPL) sürüm 2 ya da " +
       "(isteğinize göre) daha sonraki bir sürümü ile lisanslıdır ve <b>hiçbir garanti " +
-      "olmaksızın</b> sunulur; bu koşullar altında kopyalanıp dağıtılabilir. Lisans metinleri " +
+      "olmaksızın</b> sunulur. Kopyalanması ve dağıtılması yalnızca bu lisansın koşullarıyla " +
+      "mümkündür. Lisans metinleri " +
       "uygulama klasöründeki LICENSE (GPL v2) ve LICENSE-GPL-3.0.txt (GPL v3) dosyalarındadır; " +
       "bildirim metni için <a href='#' class='ayar-git'>⚙ Ayarlar › Hakkında</a> bölümündeki " +
       "\"Lisans ve sorumluluk bildirimi\"ne bakın.",
@@ -71,7 +72,9 @@ const I18N = {
     "ex.atlanan": "atlanan",
     "ex.korunur": "okuma çerçevesi korunur",
     "ex.kayar": "okuma çerçevesi kayar",
-    "ex.primer": (a, b) => `Primerler ekson ${a} ve ekson ${b} içine konur.`,
+    "ex.primer": "Primerler seçilen eksonların iki yanında, ürün boyu aralığına ve primer koşullarına uyan eksonlara konur.",
+    "ex.primerSinir": "Primerlerden biri seçilen eksonların dışındaki bir ekson sınırına oturur; diğeri öbür yandaki eksonlara konur.",
+    "ex.primerSinirYok": "Seçilen eksonların dışında ekson sınırı yok; kutu işaretliyken bu seçim tasarlanamaz.",
     "ex.fark": (n) => `Normal ve atlanmış bant arasındaki fark ${n} bp.`,
     "ex.bantlar": "Beklenen bantlar (normale göre)",
     "ex.utr": "Seçimin bir kısmı UTR'de; çerçeve yalnız kodlayan kısımdan hesaplandı.",
@@ -86,6 +89,12 @@ const I18N = {
       "Kapalıyken (varsayılan) forward ve reverse farklı eksonlara yerleşir; ürün gDNA'da " +
       "intron kadar uzar, iki boyut da gösterilir. Açıkken primerlerden biri doğrudan ekson " +
       "sınırına oturur ve gDNA'ya hiç bağlanmaz — daha kesindir ama bazen uygun primer bulunamaz.",
+    "rna.junction.helpSkip":
+      "Kapalıyken (varsayılan) primerler seçilen eksonların iki yanındaki eksonlara yerleşir; " +
+      "ürün gDNA'da intronlar kadar uzar ve kartta gDNA boyu gösterilir. Açıkken primerlerden " +
+      "biri, seçilen eksonlara <b>komşu olmayan</b> bir ekson sınırına oturur ve gDNA'ya " +
+      "bağlanmaz; normal ve atlanmış bant yine birlikte görülür. gDNA ürünü çoğalabilecek kadar " +
+      "kısaysa açın — primer seçimi daraldığı için bazen uygun primer bulunamaz.",
     "rna.skip.help":
       "Seçilen eksonların (bitişik blok için ilkinin ve sonuncusunun) <b>öncesindeki ve " +
       "sonrasındaki</b> eksonlara primer yerleştirilir. Normal transkript uzun, atlanmış " +
@@ -431,6 +440,8 @@ const I18N = {
     "chip.gdna": "gDNA",
     "chip.gdna.title": "Aynı primerler genomik DNA üzerinde bu boyutta ürün verir — jelde ayırt etmek için.",
     "chip.gdna.titleSkip": "Genomik DNA üzerinde beklenen ürün — intronları da kapsar.",
+    "chip.gdna.none": "çoğalmaz",
+    "chip.gdna.noneTitle": "Primerlerden biri ekson sınırının üzerine oturuyor ve gDNA'ya bağlanmaz; bu çift genomik DNA'dan ürün vermez.",
     "chip.junctions": "Kapsanan sınır",
     "chip.junctions.title": "Ürün bu kadar ekson sınırını kapsıyor.",
     "chip.noJunction": "Sınır kapsamıyor",
@@ -838,7 +849,8 @@ const I18N = {
     "app.notice":
       "AllPrime © 2026 Eren Kılınç. This program is licensed under the GNU General Public " +
       "License (GPL) version 2 or (at your option) any later version and comes with " +
-      "<b>absolutely no warranty</b>; you may copy and redistribute it under these conditions. " +
+      "<b>absolutely no warranty</b>. It may be copied and redistributed only under the " +
+      "conditions of this licence. " +
       "The licence texts are in the LICENSE (GPL v2) and LICENSE-GPL-3.0.txt (GPL v3) files in the " +
       "application folder; for the notice text see \"Licence and disclaimer\" under " +
       "<a href='#' class='ayar-git'>⚙ Settings › About</a>.",
@@ -890,7 +902,9 @@ const I18N = {
     "ex.atlanan": "skipped",
     "ex.korunur": "reading frame preserved",
     "ex.kayar": "reading frame shifted",
-    "ex.primer": (a, b) => `Primers are placed in exon ${a} and exon ${b}.`,
+    "ex.primer": "Primers are placed in exons on either side of the selection that fit the product-size range and the primer criteria.",
+    "ex.primerSinir": "One primer sits across an exon junction outside the selected exons; the other is placed in the exons on the other side.",
+    "ex.primerSinirYok": "There is no exon junction outside the selected exons; this selection cannot be designed while the box is ticked.",
     "ex.fark": (n) => `The difference between the normal and skipped band is ${n} bp.`,
     "ex.bantlar": "Expected bands (relative to normal)",
     "ex.utr": "Part of the selection is UTR; the frame is computed from the coding part only.",
@@ -906,6 +920,13 @@ const I18N = {
       "is longer by the intron length and both sizes are shown. When on, one primer sits directly " +
       "on an exon junction and cannot bind gDNA at all — more definitive, but sometimes no suitable " +
       "primer is found.",
+    "rna.junction.helpSkip":
+      "When off (the default), the primers sit in the exons on either side of the selected exons; " +
+      "on gDNA the product is longer by the introns and the card shows the gDNA size. When on, one " +
+      "primer sits across an exon junction that is <b>not adjacent</b> to the selected exons and " +
+      "cannot bind gDNA; the normal and skipped bands are still seen together. Turn it on when the " +
+      "gDNA product is short enough to amplify — the choice of primers narrows, so sometimes no " +
+      "suitable primer is found.",
     "rna.skip.help":
       "Primers are placed in the exons <b>before and after</b> the selected exons (for an " +
       "adjacent block, its first and last exon). The normal transcript gives the longer product, " +
@@ -1243,6 +1264,8 @@ const I18N = {
     "chip.gdna": "gDNA",
     "chip.gdna.title": "The same primers give a product of this size on genomic DNA — useful for telling them apart on a gel.",
     "chip.gdna.titleSkip": "Expected product on genomic DNA — includes the introns.",
+    "chip.gdna.none": "no product",
+    "chip.gdna.noneTitle": "One primer sits across an exon junction and cannot bind gDNA, so this pair gives no product from genomic DNA.",
     "chip.junctions": "Junctions spanned",
     "chip.junctions.title": "The product spans this many exon junctions.",
     "chip.noJunction": "Spans no junction",

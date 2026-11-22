@@ -1786,6 +1786,8 @@ _ELEME_ETIKET = {
     "too many ns": ("belirsiz baz (N)", "ambiguous bases (N)"),
     "not in any ok left region": ("bölge kısıtı", "region constraint"),
     "not in any ok right region": ("bölge kısıtı", "region constraint"),
+    # "Primer ekson sinirinin uzerine otursun" acikken: ciftin hicbir primeri sinira oturmuyor
+    "no overlap of required point": ("ekson sınırı şartı", "exon-junction requirement"),
 }
 
 
@@ -2505,7 +2507,8 @@ def design_primers(assembly, chrom, position, gene=None, params=None, havuz=None
 CDNA_DEFAULTS = {
     # Ekson siniri davranisi
     "junction_flanking": True,    # (b) F ve R farkli eksonlarda; urun en az bir siniri kapsar
-    "junction_overlap": False,    # (a) primerlerden biri sinirin UZERINE otursun (gDNA'ya baglanmaz)
+    "junction_overlap": False,    # (a) primerlerden biri sinirin UZERINE otursun (gDNA'ya baglanmaz);
+                                  #     ekson atlama testinde de gecerli (yalniz blogun disindaki sinirlar)
     "min_3p_overlap_junction": 4, # (a) modunda primerin sinirin otesine gecen 3' baz sayisi
     "min_5p_overlap_junction": 7, # (a) modunda 5' tarafta kalan baz sayisi
     # Ekson atlama testi
@@ -2800,8 +2803,30 @@ def _collect_pairs_cdna(tx, res, order, p, template=None, hedef=None):
     pairs = []
     for rank, (i, ds, total) in enumerate(order, start=1):
         d = _amplikon_ekle(_pair_core(res, i, ds, total, rank, p), res, i, template, hedef=hedef)
-        pairs.append(_cdna_pair_coords(tx, res, i, d))
+        d = _cdna_pair_coords(tx, res, i, d)
+        _sinir_saglamligi(tx, res, i, d, p)
+        pairs.append(d)
     return pairs
+
+
+def _sinir_saglamligi(tx, res, i, d, p):
+    """Her primere 'junction_solid' ekler: primer bir ekson sinirini tasarim kuralindaki kadar
+    asiyor mu (3' tarafta >= min_3p_overlap_junction, 5' tarafta >= min_5p_overlap_junction)?
+    Yalnizca boyle bir primer genomik DNA'da uzamaz sayilir; sinira bir iki bazla degen primer
+    gDNA'ya baglanabilir ('spans_junction' dogru olsa da). Arayuz "gDNA: cogalmaz" hukmunu buna
+    gore verir (v1.1.2). Forward'in 3' ucu buyuk indekste, Reverse'in 3' ucu kucuk indekstedir."""
+    min3 = int(p.get("min_3p_overlap_junction", 4))
+    min5 = int(p.get("min_5p_overlap_junction", 7))
+    f_s, f_e, r_s, r_e = _primer_spans(res, i)
+    for key, a, b, ileri in (("forward", f_s, f_e, True), ("reverse", r_s, r_e, False)):
+        saglam = False
+        for j in tx["junctions"]:
+            if a < j <= b:
+                sol, sag = j - a, b - j + 1          # sinirin solunda / saginda kalan baz
+                bes, uc = (sol, sag) if ileri else (sag, sol)
+                if uc >= min3 and bes >= min5:
+                    saglam = True
+        d[key]["junction_solid"] = saglam
 
 
 def _cdna_snps(tx, assembly, p):
@@ -3154,6 +3179,9 @@ def design_exon_skipping(assembly, acc, exon_no, params=None):
     eksonlar da blokta kalir (primerler blogun disindaki komsu eksonlara oturur).
     Primerler hedef eksona komsu SINIRLARIN uzerine oturamaz; otursaydi atlanmis
     transkripte baglanamaz ve testin kanitlamak istedigi bant hic gorunmezdi.
+    params["junction_overlap"] (varsayilan kapali): primerlerden biri hedef blogun
+    DISINDAKI bir ekson sinirinin uzerine oturur (gDNA'ya baglanmaz); normal ve atlanmis
+    transkriptin ikisi de o siniri tasidigi icin iki bant yine birlikte gorulur.
     """
     if assembly not in ("GRCh37", "GRCh38"):
         raise PrimerError(t("assembly 'GRCh37' veya 'GRCh38' olmalı.",
@@ -3249,6 +3277,31 @@ def design_exon_skipping(assembly, acc, exon_no, params=None):
     global_args["PRIMER_PRODUCT_OPT_SIZE"] = int(p["product_size_min"])
     global_args["PRIMER_PAIR_WT_PRODUCT_SIZE_GT"] = float(p["skip_wt_long_product"])
 
+    # Sinir ustu primer (Varyant modundaki ayarin aynisi, ayni primer3 mekanizmasi):
+    # primerlerden biri bir ekson sinirinin UZERINE oturur, gDNA'ya baglanmaz. Atlama
+    # testinde yalnizca hedef blogun DISINDAKI sinirlar kullanilabilir: bloga komsu iki
+    # sinir ve blogun icindekiler atlanmis transkriptte yoktur; primer oraya otursa iki
+    # banttan biri hic gorunmez. Komsu sinirlar zaten dislanan bolgeye duser (exon_excl);
+    # liste yine de acikca daraltilir. Sinir ofseti j = sonraki eksonun ilk bazinin indeksi.
+    junction_overlap = bool(p.get("junction_overlap"))
+    if junction_overlap:
+        dis_sinirlar = [j for j in tx["junctions"] if j < ex_start or j > ex_end + 1]
+        if not dis_sinirlar:
+            raise PrimerError(t(
+                f"{tx['acc']}: seçilen eksonların dışında ekson sınırı yok (primerlerin "
+                f"oturduğu ekson {blk_a - 1} ve {blk_b + 1} transkriptin ilk ve son eksonu). "
+                "Bu testte primer ekson sınırının üzerine oturtulamaz; seçeneği kapatıp "
+                "yeniden deneyin.",
+                f"{tx['acc']}: there is no exon junction outside the selected exons (the "
+                f"anchor exons {blk_a - 1} and {blk_b + 1} are the first and last exons of "
+                "the transcript). No primer can be placed across an exon junction in this "
+                "assay; turn the option off and try again."))
+        seq_args["SEQUENCE_OVERLAP_JUNCTION_LIST"] = [j - 1 for j in dis_sinirlar]
+        global_args["PRIMER_MIN_3_PRIME_OVERLAP_OF_JUNCTION"] = \
+            int(p["min_3p_overlap_junction"])
+        global_args["PRIMER_MIN_5_PRIME_OVERLAP_OF_JUNCTION"] = \
+            int(p["min_5p_overlap_junction"])
+
     res = primer3.bindings.design_primers(seq_args, global_args)
 
     snp_notes = []
@@ -3333,7 +3386,26 @@ def design_exon_skipping(assembly, acc, exon_no, params=None):
             "Some expected bands are very close (differ by less than 20 bp or 5% of the larger "
             "band); they may be hard to tell apart on a gel. Details: the flagged band pairs "
             "in each product row."))
-    if not pairs:
+    if junction_overlap:
+        # Gercekten sinir uzerine oturmus mu? (sessiz basarisizlik olmasin; design_cdna ile ayni)
+        for pr in pairs:
+            if not (pr["forward"]["spans_junction"] or pr["reverse"]["spans_junction"]):
+                notes.append(t(
+                    f"Çift {pr['rank']}: primer3 sınır üstü primer döndürmedi; "
+                    "bu çift gDNA'ya da bağlanabilir.",
+                    f"Pair {pr['rank']}: primer3 did not return a junction-spanning "
+                    "primer; this pair can also bind gDNA."))
+    if not pairs and junction_overlap:
+        notes.append(t(
+            "Ekson sınırının üzerine oturan primerle uygun çift bulunamadı: seçilen "
+            "eksonların dışındaki sınırlar ürün boyu sınırının dışında kalıyor ya da oraya "
+            "uygun primer sığmıyor. 'Primer ekson sınırının üzerine otursun' seçeneğini "
+            "kapatıp yeniden deneyin; o durumda kartta gDNA ürününün boyu gösterilir.",
+            "No suitable pair was found with a primer placed across an exon junction: the "
+            "junctions outside the selected exons lie beyond the product size limit, or no "
+            "acceptable primer fits there. Turn off 'Place one primer across an exon "
+            "junction' and try again; the card then shows the size of the gDNA product."))
+    elif not pairs:
         notes.append(t(
             "Uygun çift bulunamadı. Komşu eksonlar primer sığdırmak için çok kısa olabilir; "
             "'skip_max_flank' değerini artırarak daha uzak eksonlara çapa atmayı deneyin.",
@@ -3362,6 +3434,9 @@ def design_exon_skipping(assembly, acc, exon_no, params=None):
                      if coding_tx else None),
         "skip_bands": skip_bands,
         "anchor_exons": [blk_a - 1, blk_b + 1],
+        # "overlap": primerlerden biri blogun disindaki bir ekson sinirinin uzerinde;
+        # "flanking": primerler blogun iki yanindaki eksonlarda (bu modda urun her zaman sinir kapsar)
+        "junction_mode": "overlap" if junction_overlap else "flanking",
         "params_used": p,
         "num_returned": len(pairs),
         "pairs": pairs,

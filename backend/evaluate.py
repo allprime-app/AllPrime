@@ -1263,6 +1263,10 @@ def _findings_cdna(r, p, tx):
     gd = urun["gdna_size"]
     sinir_ustu = any((r["placement"].get(a) or {}).get("spans_junction")
                      for a in r["placement"])
+    en_az = int(p.get("junction_min_side", 4))
+    sinir_saglam = any(y and y.get("spans_junction") and min(y["five_side"], y["three_side"]) >= en_az
+                       for y in r["placement"].values())
+    urun["gdna_none"] = sinir_saglam
     if sinir == 0 and not sinir_ustu:
         ekle("uyari",
              f"Ürün tek ekzonun içinde kalıyor (intron kapsamıyor). Genomik DNA "
@@ -1273,6 +1277,11 @@ def _findings_cdna(r, p, tx):
              f"contamination gives the SAME {urun['cdna_size']:,} bp band, which cannot "
              "be told apart on a gel. A no-RT control is essential; if possible move one "
              "primer onto an exon junction.")
+    elif sinir_saglam:
+        # Sinirin iki yaninda da yeterli bazi olan primer genomik DNA'ya baglanmaz (yukaridaki
+        # 3. bulgu bunu zaten soyler): gDNA bandi icin boy yazmak onunla celisirdi. Bant yok;
+        # arayuz "cogalmaz" yazar (urun["gdna_none"]; kullanici karari 2026-11-22).
+        pass
     elif gd:
         if gd > p["max_product"]:
             ekle("bilgi",

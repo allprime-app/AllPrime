@@ -625,6 +625,128 @@ def test_ters_takilmis_cift(c):
        "yer değişmiş" in metin and "BRCA1" in metin)
 
 
+def test_atlama_sinir_ayari(c):
+    """NOBETCI (2026-11-21, v1.1.0; kullanici "Evet, ekle"): ekson atlama testinde "primer ekson
+    sinirinin uzerine otursun" ayari. Ayar yalniz Varyant (c.) tipindeydi; atlama isteginde alan
+    gonderilmiyor, motor da okumuyordu. Kural: primerlerden biri secilen eksonlarin DISINDAKI bir
+    ekson sinirina oturur (bloga komsu sinira otursa iki banttan biri kaybolurdu).
+    Ornekler olculdu (GRCh38, varsayilan ayarlar; AllPrime-tarama/cikti/atlama_sinir, 250 ekson):
+      LAMA2 NM_000426 ekson 25 (180 bp): ayar yokken 455 / 275 bp, gDNA urunu 1.325 bp; ayarla
+        Reverse ekson 27/28 sinirinda, 544 / 364 bp.
+      POMC NM_000939 (3 ekson) ekson 2: secilen eksonun disinda sinir yok.
+      TCL1A NM_021966 ekson 2: disarida tek sinir var, oraya uyan cift cikmiyor.
+      FHOD1 NM_013241 ekson 21: ayar yokken gDNA urunu 600 bp (700 bp sinirinin icinde)."""
+    baslik("Ekson atlama: primerlerden biri ekson sinirinin uzerine otursun (v1.1.0)")
+
+    def sk(acc, ekson, params=None, lang="tr"):
+        r = c.post("/design_skipping", json={"assembly": "GRCh38", "acc": acc, "exons": ekson,
+                                             "lang": lang, "params": params or {}})
+        return r.status_code, (r.get_json() or {})
+
+    def diziler(d):
+        return [(p["forward"]["sequence"], p["reverse"]["sequence"]) for p in d.get("pairs") or []]
+
+    def sinirda(p):
+        return [a for a in ("forward", "reverse") if p[a].get("spans_junction")]
+
+    k0, d0 = sk("NM_000426", 25)
+    k1, d1 = sk("NM_000426", 25, {"junction_overlap": False})
+    k2, d2 = sk("NM_000426", 25, {"junction_overlap": True})
+    ok("Ayar verilmeyince ve kapaliyken ayni ciftler (varsayilan degismedi)",
+       k0 == k1 == 200 and bool(diziler(d0)) and diziler(d0) == diziler(d1),
+       f"-> {k0} {k1}, {len(diziler(d0))} cift")
+    ok("  ...yanit hangi kuralla tasarlandigini soyler (junction_mode: flanking / overlap)",
+       d0.get("junction_mode") == "flanking" and d2.get("junction_mode") == "overlap",
+       f"-> {d0.get('junction_mode')} / {d2.get('junction_mode')}")
+    ciftler = d2.get("pairs") or []
+    ok("Ayar acik: cift cikar ve her ciftte primerlerden biri bir ekson sinirinin uzerinde",
+       k2 == 200 and len(ciftler) > 0 and all(sinirda(p) for p in ciftler),
+       f"-> {k2}, {len(ciftler)} cift")
+    ok("  ...hicbir primer atlanan eksona (25) degmez; sinirdaki primer iki DIS eksonun arasinda",
+       bool(ciftler) and all(25 not in p[a]["exons"] for p in ciftler for a in ("forward", "reverse"))
+       and all(len(p[a]["exons"]) == 2 and (max(p[a]["exons"]) < 25 or min(p[a]["exons"]) > 25)
+               for p in ciftler for a in sinirda(p)),
+       str([(p["forward"]["exons"], p["reverse"]["exons"]) for p in ciftler[:3]]))
+    ok("  ...iki bant yine birlikte: atlanmis = normal - 180 bp; normal bant 700 bp sinirinin icinde",
+       bool(ciftler) and all(p["product_size_normal"] - p["product_size_skipped"] == 180
+                             and p["band_difference"] == 180 and p["product_size_normal"] <= 700
+                             for p in ciftler))
+    ok("  ...liste ayar kapaliyken cikandan farkli (kisit gercekten uygulandi)",
+       bool(ciftler) and diziler(d2) != diziler(d0))
+    # v1.1.2: "gDNA: cogalmaz" hukmu icin motor her primere junction_solid yazar (3' >= 4, 5' >= 7 baz).
+    ok("  ...ayar acikken her ciftte kurali karsilayan (junction_solid) bir primer var",
+       bool(ciftler) and all(p["forward"].get("junction_solid") or p["reverse"].get("junction_solid")
+                             for p in ciftler))
+    k3, d3 = sk("NM_000426", 3)
+    p3 = (d3.get("pairs") or [{}])[0]
+    f3 = p3.get("forward") or {}
+    ok("  ...sinira yalniz degen primer saglam sayilmaz (olculen: LAMA2 ekson 3, 1. cift Forward ekson 1/2)",
+       k3 == 200 and f3.get("exons") == [1, 2] and f3.get("spans_junction") is True
+       and f3.get("junction_solid") is False and (p3.get("reverse") or {}).get("junction_solid") is False,
+       f"-> {f3.get('exons')} spans {f3.get('spans_junction')} solid {f3.get('junction_solid')}")
+    if (d2.get("dbsnp") or {}).get("available") and ciftler and d0.get("pairs"):
+        p, q = ciftler[0], d0["pairs"][0]
+        ok("  ...olculen 1. cift: Reverse ekson 27/28 sinirinda, 544 / 364 bp (ayar yokken 455 / 275 bp, gDNA 1.325 bp)",
+           p["reverse"]["exons"] == [27, 28]
+           and (p["product_size_normal"], p["product_size_skipped"]) == (544, 364)
+           and (q["product_size_normal"], q["product_size_skipped"], q["gdna_product_size"]) == (455, 275, 1325),
+           f"-> {p['reverse']['exons']} {p['product_size_normal']}/{p['product_size_skipped']}; "
+           f"{q['product_size_normal']}/{q['product_size_skipped']} gDNA {q['gdna_product_size']}")
+    else:
+        atla("Olculen 1. cift (LAMA2 ekson 25)", "dbSNP indeksi yok (primer secimi degisir)")
+
+    # Bitisik olmayan secim: blok 29-31; sinirdaki primer blogun disinda, uc bant yine hesaplanir
+    k, d = sk("NM_000426", "29,31", {"junction_overlap": True})
+    cf = d.get("pairs") or []
+    ok("Bitisik olmayan secim (29,31): sinirdaki primer blogun (29-31) disinda, uc bant da hesaplanir",
+       k == 200 and len(cf) > 0 and all(sinirda(p) for p in cf)
+       and all(not (set(p[a]["exons"]) & {29, 30, 31}) for p in cf for a in ("forward", "reverse"))
+       and all(len(p.get("bands") or []) == 3 for p in cf), f"-> {k}, {len(cf)} cift")
+
+    # Secilen eksonun disinda sinir yok: uc eksonlu transkript
+    k, d = sk("NM_000939", 2, {"junction_overlap": True})
+    ok("Uc eksonlu transkript (POMC ekson 2): disarida sinir yok -> 400 + anlasilir mesaj",
+       k == 400 and "ekson sınırı yok" in d.get("error", "") and "ekson 1 ve 3" in d.get("error", ""),
+       f"-> {k} {d.get('error', '')[:90]}")
+    k, d = sk("NM_000939", 2, {"junction_overlap": True}, lang="en")
+    ok("  ...Ingilizce mesaj",
+       k == 400 and "no exon junction outside the selected exons" in d.get("error", ""),
+       f"-> {d.get('error', '')[:90]}")
+    k, d = sk("NM_000939", 2)
+    ok("  ...ayar kapaliyken ayni ekson tasarlanir", k == 200 and len(d.get("pairs") or []) > 0, f"-> {k}")
+
+    # Disarida sinir var ama oraya uyan cift yok: bos liste + sebebi soyleyen not
+    k, d = sk("NM_021966", 2, {"junction_overlap": True})
+    notlar = " ".join(d.get("notes") or [])
+    ok("Sinira uyan cift yoksa (TCL1A ekson 2): bos liste ve secenegi kapatmayi soyleyen not",
+       k == 200 and not (d.get("pairs") or [])
+       and "Ekson sınırının üzerine oturan primerle uygun çift bulunamadı" in notlar
+       and "seçeneğini kapatıp yeniden deneyin" in notlar and "skip_max_flank" not in notlar,
+       f"-> {k} {notlar[:110]}")
+    ok("  ...eleme dokumunde sebep Turkce etiketle ('ekson siniri sarti'); primer3'un ham metni yok",
+       "ekson sınırı şartı" in notlar and "no overlap of required point" not in notlar, f"-> {notlar[-90:]}")
+    k, d = sk("NM_021966", 2, {"junction_overlap": True}, lang="en")
+    notlar_en = " ".join(d.get("notes") or [])
+    ok("  ...Ingilizce not",
+       "No suitable pair was found with a primer placed across an exon junction" in notlar_en
+       and "exon-junction requirement" in notlar_en and "no overlap of required point" not in notlar_en,
+       f"-> {notlar_en[-90:]}")
+    k, d = sk("NM_021966", 2)
+    ok("  ...ayar kapaliyken ayni eksonda cift cikar", k == 200 and len(d.get("pairs") or []) > 0, f"-> {k}")
+
+    # Ayarin ise yaradigi durum: gDNA urunu laboratuvar sinirinin icinde
+    k0, d0 = sk("NM_013241", 21)
+    k2, d2 = sk("NM_013241", 21, {"junction_overlap": True})
+    g = ((d0.get("pairs") or [{}])[0]).get("gdna_product_size")
+    ok("gDNA urunu kisa olan ornek (FHOD1 ekson 21): ayar yokken gDNA urunu 700 bp'nin altinda; ayarla cift cikar",
+       k0 == k2 == 200 and g is not None and g <= 700 and len(d2.get("pairs") or []) > 0
+       and all(sinirda(p) for p in d2["pairs"]), f"-> gDNA {g} bp")
+
+    # Onay kutusu degeri metin olarak gelse de okunur (ayarlar.birlestir: bool alan)
+    k, d = sk("NM_000426", 25, {"junction_overlap": "true"})
+    ok("Ayar metin olarak da okunur ('true')", k == 200 and d.get("junction_mode") == "overlap", f"-> {k}")
+
+
 def test_rna_degerlendirme(c):
     baslik("RNA / cDNA degerlendirmesi")
     # ASIL GEREKCE: ekson SINIRINA oturan primer genomda butun halde bulunmaz.
@@ -662,6 +784,19 @@ def test_rna_degerlendirme(c):
        f"{u.get('gdna_size')} bp")
     ok("  ...gDNA bandi cDNA'dan buyuk (intron kapsiyor)",
        (u.get("gdna_size") or 0) > u.get("cdna_size", 0))
+    # NOBETCI (v1.1.2, kullanici 2026-11-22 "cogalmaz yazanda boy yazmasina gerek yok"): sinir ustu
+    # primerli ciftte bulgu "genomik DNA'dan X bp'lik bant" diyordu; primer gDNA'ya baglanmadigi icin
+    # bant yoktur. Bulgu bunu soyler, boy yazmaz.
+    metin = " ".join(b.get("text", "") for b in j.get("findings") or [])
+    ok("  ...sinir ustu primerde gDNA bandi icin boy soylenmez (bulgu 'baglanamaz' der; urun gdna_none)",
+       "Genomik DNA'ya bağlanamaz" in metin and u.get("gdna_none") is True
+       and "Genomik DNA'dan çıkacak bant" not in metin and "bir bant da çıkar" not in metin, metin[-200:])
+    je = c.post("/evaluate_cdna", json={"forward": F, "reverse": R, "acc": "NM_007294",
+                                        "assembly": "GRCh38", "lang": "en"}).get_json() or {}
+    metin_en = " ".join(b.get("text", "") for b in je.get("findings") or [])
+    ok("  ...Ingilizce bulgu", "cannot bind genomic DNA" in metin_en.replace("It cannot\n", "It cannot ")
+       .replace("It cannot bind", "cannot bind") and "From genomic DNA the band" not in metin_en
+       and "genomic DNA also gives" not in metin_en, metin_en[-160:])
 
     # Tek ekzon icinde kalan urun: gDNA kontaminasyonu AYNI bandi verir
     d2 = c.post("/design_cdna", json={
@@ -3357,6 +3492,83 @@ def test_telif_gorunur(c):
         ok(f"  ...{dil}: duyuruda ad, GPL, garanti yok, dagitim kosulu, LICENSE",
            all(k in duyuru for k in ("Eren Kılınç", "GPL", "LICENSE") + kelimeler))
     ok("onay ekraninda telif satiri var", "2026 Eren Kılınç" in onay)
+    # NOBETCI (2026-11-21, v1.1.1; kullanici "Evet, degistir"): duyurudaki dagitim cumlesi izin veren
+    # ifadeyle yaziliydi ("bu kosullar altinda kopyalanip dagitilabilir"); kullanici bu kadar acik
+    # yazilmasini istemedi. Cumle duyurudan CIKARILMAZ: GPL v2 md. 2(c) ve GPL v3 "Appropriate Legal
+    # Notices" dagitim kosulunu duyurunun parcasi sayar ve duyuru degistirilmis surumlerde de eser
+    # sahibinin adiyla birlikte gosterilmek zorundadir. Kosulu vurgulayan ifadeyle yazilir.
+    import re
+    duz = lambda s: re.sub(r'"\s*\+\s*"', "", s)
+    d_tr, d_en = duz(deger(tr, "app.notice")), duz(deger(en, "app.notice"))
+    ok("Duyuruda dagitim cumlesi kosulu vurgular (TR / EN)",
+       "Kopyalanması ve dağıtılması yalnızca bu lisansın koşullarıyla mümkündür." in d_tr
+       and "It may be copied and redistributed only under the conditions of this licence." in d_en,
+       d_tr[150:330])
+    ok("  ...izin veren eski cumle yok ('kopyalanip dagitilabilir' / 'you may copy and redistribute')",
+       "kopyalanıp dağıtılabilir" not in i18n and "you may copy and redistribute" not in i18n)
+    ok("  ...duyurunun obur ogeleri yerinde: garanti yok (kalin), iki lisans dosyasi, Hakkinda baglantisi",
+       all(x in d for d in (d_tr, d_en)
+           for x in ("LICENSE (GPL v2)", "LICENSE-GPL-3.0.txt (GPL v3)", "class='ayar-git'"))
+       and "<b>hiçbir garanti olmaksızın</b>" in d_tr and "<b>absolutely no warranty</b>" in d_en)
+
+
+def test_ingilizce_kilavuz(c):
+    baslik("Ayrintili kilavuzun Ingilizcesi (USER_GUIDE.txt) var, pakete girer, KURULUM.txt ile esit (v1.1.2)")
+    # NOBETCI (2026-11-22, kullanici "ayrintili kilavuz ingilizce de olsun"): ayrintili kilavuz yalniz
+    # Turkceydi (KURULUM.txt); README Ingilizce okura "in Turkish" diyordu. USER_GUIDE.txt bolum bolum
+    # cevirisidir; kurulu klasore kopyalanir, iki dosya birbirine isaret eder.
+    import re
+    yol = os.path.join(KOK, "USER_GUIDE.txt")
+    ok("USER_GUIDE.txt var", os.path.exists(yol))
+    if not os.path.exists(yol):
+        return
+    oku = lambda ad: open(os.path.join(KOK, ad), encoding="utf-8").read()
+    tr, en = oku("KURULUM.txt"), oku("USER_GUIDE.txt")
+    bolum = lambda s: len(re.findall(r"(?m)^-{5,}\r?$", s))
+    ok("  ...bolum sayisi KURULUM.txt ile ayni", bolum(en) == bolum(tr) and bolum(tr) >= 15,
+       f"-> TR {bolum(tr)}, EN {bolum(en)}")
+    ok("  ...iki dosya birbirine isaret eder",
+       "USER_GUIDE.txt" in tr.splitlines()[2] and "KURULUM.txt" in en.splitlines()[2])
+    kalan = sorted(set(re.findall(r"[^\s]*[çğışöüÇĞİŞÖÜ][^\s]*", en.replace("Kılınç", ""))))
+    ok("  ...metin Ingilizce (yazar adi disinda Turkce harfli sozcuk yok)", not kalan, str(kalan[:6]))
+    # Olculen / kurala bagli sayilar iki dilde de ayni (TR binlik nokta, EN virgul)
+    ciftler = [("142 karakter", "142 characters"), ("260 karakter", "260-character"), ("16.569 bp", "16,569 bp"),
+               ("16.571 bp", "16,571 bp"), ("50.000 bp", "50,000 bp"), ("700 bp", "700 bp"),
+               ("20–50 saniye", "20–50 seconds"), ("1.000 adayın", "1,000 candidates"), ("9-52 sn", "9-52 s"),
+               ("en az 100 bp", "at least 100 bp"), ("180-650 bp", "180-650 bp"), ("son 6 bazın", "last 6 bases"),
+               ("%APPDATA%\\AllPrime\\favoriler.json", "%APPDATA%\\AllPrime\\favoriler.json"),
+               ("eren.501kilinc@gmail.com", "eren.501kilinc@gmail.com")]
+    eksik = [f"{a} / {b}" for a, b in ciftler if a not in tr or b not in en]
+    ok("  ...olculen sayilar ve kurallar iki dosyada da var", not eksik, "; ".join(eksik[:5]))
+    # Arayuzde gecen adlar Ingilizce sozlukteki adlarla ayni (kilavuz ekranda gorulenle uyussun)
+    i18n = open(os.path.join(KOK, "electron", "renderer", "i18n.js"), encoding="utf-8").read()
+    en_blok = i18n.split(chr(10) + "  en: {", 1)[1]
+    adlar = ("⚙ Settings", "Data files (download)", "Genome files (local FASTA)", "Licence and disclaimer",
+             "Check specificity automatically", "Keep primers off common variants (dbSNP)",
+             "Longest amplifiable product (bp)", "Advanced parameters", "Product sequence", "Copy for IGV",
+             "Open in Evaluate", "Download list as CSV", "Make these values the laboratory default",
+             "Restore factory values", "Follow Windows", "Find by gene", "Best specific pair",
+             "Pairs that separate from the copy", "Difference from copy", "Very different", "Compared with pair 1",
+             "A better specific pair exists", "No problems found", "Points to watch", "Serious problem",
+             "Distance between the two sequences", "Got it, continue")
+    consent = open(os.path.join(KOK, "electron", "renderer", "consent.js"), encoding="utf-8").read()
+    en_duz = re.sub(r"<[^>]+>", "", en_blok)
+    yok = [a for a in adlar if a not in en or (a not in en_duz and a not in consent)]
+    ok("  ...kilavuzdaki arayuz adlari Ingilizce arayuzdeki adlarla ayni", not yok, str(yok[:5]))
+    ok("  ...sinir kutusu ve 'no product' anlatilir; lisans bolumu GPL v3 metnine ve kaynak zip'ine isaret eder",
+       "Place one primer across an exon junction" in en and '"no product"' in en
+       and "LICENSE-GPL-3.0.txt" in en and "AllPrime-kaynak-" in en)
+    ok("kurulu-guncelle.ps1 kilavuzu uygulama klasorune kopyalar",
+       '"KURULUM.txt", "USER_GUIDE.txt")' in oku("kurulu-guncelle.ps1"))
+    readme = oku("README.md")
+    ok("README: Ingilizce bolum USER_GUIDE.txt'ye, Turkce bolum ikisine de baglanir",
+       "[USER_GUIDE.txt](USER_GUIDE.txt) (Turkish: [KURULUM.txt](KURULUM.txt))" in readme
+       and "(İngilizcesi: [USER_GUIDE.txt](USER_GUIDE.txt))" in readme and "(in Turkish)." not in
+       readme.split("The detailed installation")[1][:120])
+    if HTTP:
+        kurulu = os.path.join(os.environ["ALLPRIME_APP_ROOT"], "USER_GUIDE.txt")
+        ok("  ...kurulu klasordeki kilavuz kaynakla ayni",
+           os.path.exists(kurulu) and open(kurulu, "rb").read() == open(yol, "rb").read())
 
 
 def test_kaynak_zip(c):
@@ -4681,6 +4893,59 @@ def test_v100_sayfa_sureci_cokerse():
        and 'noticeSeen() ? "index.html" : "consent.html"' in mj)
 
 
+def test_sag_tik_menusu():
+    """NOBETCI (v1.1.3): kullanici 2026-11-22 "mouse ile sag click kopyalama calismiyor". Electron'da
+    varsayilan sag tik menusu yoktur ve main.js context-menu olayini dinlemiyordu: secili metin
+    fareyle kopyalanamiyor, kutulara fareyle yapistirilamiyordu. Sablon sagTik.js'te (saf islev,
+    burada node ile cagrilir); main.js yalniz menuyu acar."""
+    import subprocess
+    baslik("Sag tik menusu: Kes / Kopyala / Yapistir / Tumunu sec (v1.1.3)")
+    kok = os.path.join(BURASI, "..")
+    oku = lambda *a: open(os.path.join(kok, *a), encoding="utf-8").read()
+    mj = oku("electron", "main.js")
+    i = mj.find("function createWindow(")
+    govde = _yorumsuz_js(mj[i:mj.find("\n}", i)]) if i >= 0 else ""
+    ok("main.js: pencere context-menu olayini dinler ve sablon bos degilse menuyu acar",
+       '.on("context-menu"' in govde and "sagTik.sablon(p, L)" in govde
+       and "if (ogeler.length)" in govde and "Menu.buildFromTemplate(ogeler).popup(" in govde)
+    ok("main.js sagTik.js'i yukler", 'require("./sagTik")' in mj)
+    ok("  ...sagTik.js kurulu-guncelle listesinde ve paket dosyalarinda (yoksa kurulu uygulama acilmaz)",
+       'k = "electron\\sagTik.js"' in oku("kurulu-guncelle.ps1") and '"sagTik.js"' in oku("electron", "package.json"))
+    mod = os.path.abspath(os.path.join(kok, "electron", "sagTik.js"))
+    if not os.path.exists(mod):
+        return ok("electron/sagTik.js var", False)
+    node = shutil.which("node")
+    if not node:
+        return atla("sagTik.js davranisi", "node yok")
+    betik = (
+        "const s = require(%s);"
+        "const tr = (a, b) => a, en = (a, b) => b;"
+        "process.stdout.write(JSON.stringify({"
+        "kutu: s.sablon({ isEditable: true, selectionText: 'ACGT', editFlags: { canCut: true, canCopy: true, canPaste: true, canSelectAll: true } }, tr),"
+        "bosKutu: s.sablon({ isEditable: true, selectionText: '', editFlags: { canPaste: true } }, tr),"
+        "secim: s.sablon({ isEditable: false, selectionText: 'ACGTACGT' }, tr),"
+        "secimEn: s.sablon({ isEditable: false, selectionText: 'ACGTACGT' }, en),"
+        "kutuEn: s.sablon({ isEditable: true, editFlags: {} }, en),"
+        "bos: s.sablon({ isEditable: false, selectionText: '   ' }, tr),"
+        "eksik: s.sablon(undefined, tr) }));" % json.dumps(mod))
+    r = subprocess.run([node, "-e", betik], capture_output=True, timeout=30)
+    if r.returncode != 0:
+        return ok("sagTik.js node ile calisir", False, r.stderr.decode("utf-8", "replace").strip()[-300:])
+    d = json.loads(r.stdout.decode("utf-8"))
+    rol = lambda l: [x.get("role") or x.get("type") for x in l]
+    etiket = lambda l: [x.get("label") for x in l]
+    ok("yazi kutusunda: Kes, Kopyala, Yapistir, ayirici, Tumunu sec",
+       rol(d["kutu"]) == ["cut", "copy", "paste", "separator", "selectAll"]
+       and etiket(d["kutu"]) == ["Kes", "Kopyala", "Yap\u0131\u015ft\u0131r", None, "T\u00fcm\u00fcn\u00fc se\u00e7"]
+       and all(x.get("enabled") for x in d["kutu"] if x.get("role")), str(d["kutu"])[:200])
+    ok("  ...bos kutuda yapilamayan secenekler kapali (Kes, Kopyala, Tumunu sec), Yapistir acik",
+       [x.get("enabled") for x in d["bosKutu"] if x.get("role")] == [False, False, True, False])
+    ok("sayfada secili metinde yalniz Kopyala", rol(d["secim"]) == ["copy"] and etiket(d["secim"]) == ["Kopyala"])
+    ok("  ...Ingilizce arayuzde Cut / Copy / Paste / Select all",
+       etiket(d["secimEn"]) == ["Copy"] and etiket(d["kutuEn"]) == ["Cut", "Copy", "Paste", None, "Select all"])
+    ok("secim yokken (ya da yalniz bosluk) ve bilgi gelmediginde menu yok", d["bos"] == [] and d["eksik"] == [])
+
+
 def test_v0866_favori_csv_ve_degerlendir(c):
     baslik("Favoriler CSV'sinde konum iki sutun; Degerlendir'de ayni cift 'Favorilerde' (v0.8.66)")
     # NOBETCI (2026-11-17, denetim 2 madde 2 ve 4).
@@ -5230,6 +5495,158 @@ def test_oto_kontrol_sonradan(c):
        d["normal"][2:] == ["gizli", "sirada"], str(d["normal"]))
     ok("Psodogenli gen: kapaliyken dugme, acilinca sirada, durdurulunca yine dugme",
        d["psodogen"] == ["dugme", "sirada", "dugme", "sirada"], str(d["psodogen"]))
+
+
+def test_atlama_sinir_arayuz(c):
+    baslik("Ekson atlama: 'primer ekson sinirinin uzerine otursun' kutusu arayuzde (v1.1.0)")
+    # NOBETCI (2026-11-21, kullanici "Evet, ekle"): kutu yalniz Varyant (c.) tipindeydi; "Ekson atlama
+    # testi" secilince gizleniyor ve atlama istegi junction_overlap tasimiyordu. Simdi iki tipte de
+    # gorunur (ayni onay kutusu, tipe gore aciklama), atlama istegi alani tasir; kartta primerlerden biri
+    # sinirin uzerindeyse gDNA cipi boy yerine "cogalmaz" yazar. buildRequest ve gdnaCipi app.js'ten
+    # alinip gercek i18n.js ile node'da denenir.
+    import re
+    import subprocess
+    kok = os.path.join(BURASI, "..", "electron", "renderer")
+    app = open(os.path.join(kok, "app.js"), encoding="utf-8").read()
+    i18n = open(os.path.join(kok, "i18n.js"), encoding="utf-8").read()
+    html = open(os.path.join(kok, "index.html"), encoding="utf-8").read()
+    kod = "\n".join(x for x in app.splitlines() if not x.lstrip().startswith("//"))
+
+    kutu = re.search(r'<div class="([^"]*)" id="box-junction">([\s\S]*?)</div>', html)
+    ok("Sinir kutusu acilista gorunur; iki aciklamasi var (Varyant gorunur, atlama gizli)",
+       bool(kutu) and "hidden" not in kutu.group(1)
+       and '<p class="hint" id="junctionHelp" data-i18n="rna.junction.help">' in kutu.group(2)
+       and '<p class="hint hidden" id="junctionHelpSkip" data-i18n="rna.junction.helpSkip">' in kutu.group(2))
+    ok("  ...tek onay kutusu (iki tipte ortak); atlama aciklamasi sinir kutusundan once gelir",
+       html.count('id="junction_overlap"') == 1 and 0 <= html.find('id="box-skip"') < html.find('id="box-junction"'))
+    ok("Tip degisince kutu gizlenmez; yalniz aciklama degisir",
+       '$("box-junction").classList' not in kod
+       and '$("junctionHelp").classList.toggle("hidden", skipping)' in kod
+       and '$("junctionHelpSkip").classList.toggle("hidden", !skipping)' in kod)
+    anahtar = ("rna.junction.helpSkip", "chip.gdna.none", "chip.gdna.noneTitle", "ex.primerSinir",
+               "ex.primerSinirYok")
+    ok("Metinler iki dilde", all(i18n.count(f'"{k}":') == 2 for k in anahtar),
+       str({k: i18n.count(f'"{k}":') for k in anahtar}))
+    tr_blok = i18n.split(chr(10) + "  en: {", 1)[0]
+    yardim_tr = re.search(r'"rna\.junction\.helpSkip":([\s\S]*?),\r?\n    "rna\.skip\.help"', tr_blok)
+    ok("  ...atlama aciklamasi kurali soyler: komsu olmayan sinir, iki bant birlikte, gDNA'ya baglanmaz",
+       bool(yardim_tr) and all(x in re.sub(r'"\s*\+\s*"', "", yardim_tr.group(1))
+                               for x in ("komşu olmayan", "birlikte görülür", "gDNA'ya bağlanmaz")))
+
+    def fonk(ad):
+        i = kod.find(f"function {ad}(")
+        return kod[i:kod.find("\n}", i)] + "\n}\n" if i >= 0 else ""
+
+    ok("RNA kartlarinin ucu de ayni gDNA cipini kullanir (Varyant + atlamanin iki cizimi)",
+       fonk("renderSkipPair").count('gdnaCipi(p, "chip.gdna.titleSkip")') == 2
+       and "gdna_product_size" not in fonk("renderSkipPair")
+       and 'gdnaCipi(p, "chip.gdna.title")' in fonk("renderCdnaPair")
+       and "gdna_product_size" not in fonk("renderCdnaPair"))
+    # v1.1.2 (kullanici 2026-11-22: "cogalmaz yazanda boy yazmasina gerek yok"): sinirda primer varken gDNA boyu
+    # Varyant kartinda, CSV'de, favori kaydinda ve Degerlendir RNA ozetinde de yazilmaz.
+    ok("CSV, favori kaydi ve Degerlendir RNA: sinirda primer varsa gDNA boyu yazilmaz",
+       'sinirdaPrimer(p) ? "" : p.gdna_product_size' in kod
+       and "sinirdaPrimer(p) ? null : p.gdna_product_size" in kod
+       and 'const gd = u.gdna_none ? t("chip.gdna.none")' in kod)
+    ok("  ...'cogalmaz' hukmu sinira degmeye degil, kurali karsilayan primere baglidir (junction_solid)",
+       "p.forward.junction_solid || p.reverse.junction_solid" in kod
+       and "p.forward.spans_junction || p.reverse.spans_junction" not in kod)
+    ok("Kutu degisince secim ozeti yeniden cizilir",
+       '$("junction_overlap").addEventListener("change", exonCiz)' in kod)
+    node = shutil.which("node")
+    if not node:
+        return atla("Atlama istegi ve gDNA cipi", "node yok")
+    betik = (i18n + "\n" + re.search(r"^const yerel = .*$", app, re.M).group(0) + "\n"
+             + re.search(r"^const esc = [\s\S]*?\);$", app, re.M).group(0) + "\n"
+             "let MODE = 'rna', RNA_MODE = 'skipping', ASSEMBLY = 'GRCh38', KUTU = false;\n"
+             "const DEGER = { acc: 'NM_000426', skip_exon: '25', c_position: 'c.100' };\n"
+             "const $ = (id) => ({ value: DEGER[id] || '', checked: id === 'junction_overlap' ? KUTU : false });\n"
+             "const collectParams = () => ({ pcr_max: 700 });\n"
+             + fonk("buildRequest") + (re.search(r"^const sinirdaPrimer = .*$", app, re.M) or [""])[0] + "\n"
+             + fonk("gdnaCipi") + fonk("exonOzetHtml") +
+             "const r = {};\n"
+             "const TX = { exon_count: 30, exons: Array.from({ length: 30 }, () => ({ len: 90, coding: 90 })) };\n"
+             "const duzOzet = (s) => s.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n"
+             "r.ozet = {};\n"
+             "for (const L of ['tr', 'en']) { LANG = L; r.ozet[L] = [];\n"
+             "  for (const [k, sec] of [[false, [25]], [true, [25]], [true, [4, 6]]]) { KUTU = k; r.ozet[L].push(duzOzet(exonOzetHtml(TX, sec))); } }\n"
+             "const TX3 = { exon_count: 3, exons: Array.from({ length: 3 }, () => ({ len: 90, coding: 90 })) };\n"
+             "const TX5 = { exon_count: 5, exons: Array.from({ length: 5 }, () => ({ len: 90, coding: 90 })) };\n"
+             "r.ozet3 = {};\n"
+             "for (const L of ['tr', 'en']) { LANG = L; r.ozet3[L] = [];\n"
+             "  for (const [k, tx, sec] of [[false, TX3, [2]], [true, TX3, [2]], [true, TX5, [2, 3, 4]], [true, TX5, [2, 3]]]) {\n"
+             "    KUTU = k; r.ozet3[L].push(duzOzet(exonOzetHtml(tx, sec))); } }\n"
+             "LANG = 'tr';\n"
+             "KUTU = false; r.atlama_kapali = buildRequest();\n"
+             "KUTU = true; r.atlama_acik = buildRequest();\n"
+             "RNA_MODE = 'variant'; r.varyant_acik = buildRequest();\n"
+             "const cift = (f, rv, g) => ({ forward: { spans_junction: f, junction_solid: f }, reverse: { spans_junction: rv, junction_solid: rv }, gdna_product_size: g });\n"
+             "const degen = { forward: { spans_junction: true, junction_solid: false }, reverse: { spans_junction: false, junction_solid: false }, gdna_product_size: 214889 };\n"
+             "const duz = (s) => s.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n"
+             "r.cip = {};\n"
+             "const S = 'chip.gdna.titleSkip', V = 'chip.gdna.title';\n"
+             "for (const L of ['tr', 'en']) { LANG = L; r.cip[L] = [duz(gdnaCipi(cift(false, false, 1325), S)),\n"
+             "  duz(gdnaCipi(cift(false, true, 5780), S)), duz(gdnaCipi(cift(true, false, 5780), S)),\n"
+             "  gdnaCipi(cift(false, false, null), S), gdnaCipi(cift(false, true, 5780), S),\n"
+             "  duz(gdnaCipi(cift(false, false, 11344), V)), duz(gdnaCipi(cift(true, false, 11344), V)),\n"
+             "  gdnaCipi(cift(false, false, 11344), V), duz(gdnaCipi(degen, S))]; }\n"
+             "console.log(JSON.stringify(r));\n")
+    dosya = tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8")
+    try:
+        dosya.write(betik)
+        dosya.close()
+        r = subprocess.run([node, dosya.name], capture_output=True, text=True, encoding="utf-8", timeout=60)
+    finally:
+        os.unlink(dosya.name)
+    if r.returncode != 0:
+        return ok("Atlama istegi ve gDNA cipi node ile calisir", False, r.stderr.strip()[-200:])
+    d = json.loads(r.stdout)
+    kapali, acik, varyant = (d[x].get("body") or {} for x in ("atlama_kapali", "atlama_acik", "varyant_acik"))
+    ok("Atlama istegi kutunun degerini tasir (kapali: false, acik: true); diger ayarlar yerinde",
+       d["atlama_acik"].get("path") == "/design_skipping" and acik.get("exons") == "25"
+       and (kapali.get("params") or {}).get("junction_overlap") is False
+       and (acik.get("params") or {}).get("junction_overlap") is True
+       and (acik.get("params") or {}).get("pcr_max") == 700, str(acik.get("params")))
+    ok("  ...Varyant istegi degismedi (junction_overlap + junction_flanking)",
+       d["varyant_acik"].get("path") == "/design_cdna"
+       and (varyant.get("params") or {}).get("junction_overlap") is True
+       and (varyant.get("params") or {}).get("junction_flanking") is False, str(varyant.get("params")))
+    tr, en = d["cip"]["tr"], d["cip"]["en"]
+    ok("gDNA cipi: sinirda primer yoksa boy (TR '1.325 bp', EN '1,325 bp')",
+       tr[0] == "gDNA: 1.325 bp" and en[0] == "gDNA: 1,325 bp", f"-> {tr[0]!r} {en[0]!r}")
+    ok("  ...Forward ya da Reverse sinirin uzerindeyse boy yazilmaz: 'cogalmaz' / 'no product'",
+       tr[1] == tr[2] == "gDNA: çoğalmaz" and en[1] == en[2] == "gDNA: no product"
+       and "5.780" not in tr[4] and "chip-ok" in tr[4] and "gDNA'ya bağlanmaz" in tr[4], f"-> {tr[1]!r} {en[1]!r}")
+    ok("  ...gDNA boyu bilinmiyorsa ve sinirda primer yoksa cip yok", tr[3] == "" and en[3] == "")
+    ok("  ...Varyant kartinda da ayni: sinirda primer yoksa boy ('11.344 bp'), varsa 'cogalmaz'; ipucu Varyant metni",
+       tr[5] == "gDNA: 11.344 bp" and tr[6] == "gDNA: çoğalmaz" and en[6] == "gDNA: no product"
+       and "jelde ayırt etmek için" in tr[7], f"-> {tr[5]!r} {tr[6]!r}")
+    ok("  ...sinira yalniz degen (kurali karsilamayan) primerde boy yazilmaya devam eder",
+       tr[8] == "gDNA: 214.889 bp" and en[8] == "gDNA: 214,889 bp", f"-> {tr[8]!r}")
+    oz_tr, oz_en = d["ozet"]["tr"], d["ozet"]["en"]
+    # v1.1.2 (kullanici 2026-11-22): ozet belirli ekson numarasi soylemez; program komsu eksonun otesindeki
+    # eksonu da secebilir (olculdu: LAMA2 ekson 25'te Reverse ekson 27'de). Kosulu anlatan genel cumle yazilir.
+    genel_tr = "Primerler seçilen eksonların iki yanında, ürün boyu aralığına ve primer koşullarına uyan eksonlara konur."
+    genel_en = "Primers are placed in exons on either side of the selection that fit the product-size range and the primer criteria."
+    ok("Secim ozeti: kutu kapaliyken belirli ekson numarasi yazmaz, kosulu anlatir",
+       genel_tr in oz_tr[0] and "ekson 24" not in oz_tr[0] and "ekson 26" not in oz_tr[0]
+       and "ekson sınırına oturur" not in oz_tr[0]
+       and genel_en in oz_en[0] and "exon 24" not in oz_en[0], oz_tr[0][:170])
+    ok("  ...kutu isaretliyken sinir primerini anlatir (bitisik olmayan secimde de)",
+       all("Primerlerden biri seçilen eksonların dışındaki bir ekson sınırına oturur" in x and genel_tr not in x
+           for x in oz_tr[1:])
+       and all("One primer sits across an exon junction outside the selected exons" in x and genel_en not in x
+               for x in oz_en[1:])
+       and "Normal ve atlanmış bant arasındaki fark 90 bp." in oz_tr[1], oz_tr[1][:170])
+    o3_tr, o3_en = d["ozet3"]["tr"], d["ozet3"]["en"]
+    yok_tr = "Seçilen eksonların dışında ekson sınırı yok; kutu işaretliyken bu seçim tasarlanamaz."
+    ok("  ...disarida sinir yoksa (3 eksonlu transkript, ya da 2..n-1 secimi) ozet bunu tasarimdan once soyler",
+       genel_tr in o3_tr[0] and yok_tr in o3_tr[1] and yok_tr in o3_tr[2]
+       and "sınırına oturur" not in o3_tr[1]
+       and "There is no exon junction outside the selected exons" in o3_en[1], o3_tr[1][:170])
+    ok("  ...bir yanda dis sinir varsa (5 eksonda 2-3) olagan sinir satiri yazilir",
+       "Primerlerden biri seçilen eksonların dışındaki bir ekson sınırına oturur" in o3_tr[3]
+       and "ekson sınırı yok" not in o3_tr[3], o3_tr[3][:170])
 
 
 def test_yakin_not_metni(c):
@@ -7081,6 +7498,7 @@ def _testler(c, engine):
     test_hedefsiz_uzun_dizi(c)
     test_arayuz_bicimi(c)
     test_telif_gorunur(c)
+    test_ingilizce_kilavuz(c)
     test_kaynak_zip(c)
     test_lisans_surumu(c)
     test_lisans_paragrafi(c)
@@ -7094,12 +7512,14 @@ def _testler(c, engine):
     test_oto_rozet_durumu(c)
     test_oto_kontrol_sonradan(c)
     test_yakin_not_metni(c)
+    test_atlama_sinir_arayuz(c)
     test_gen_yonu_gorunum(c)
     test_favoriler(c)
     test_igv_konum(c)
     test_v0866_favori_csv_ve_degerlendir(c)
     test_v0866_binlik(c, engine, genom_var, annot_var)
     test_v100_sayfa_sureci_cokerse()
+    test_sag_tik_menusu()
     test_degerlendir_urun_yonu(c)
     test_menu_kisayollari(c)
     test_kurulum_degerlendir(c)
@@ -7162,6 +7582,7 @@ def _testler(c, engine):
     if genom_var and annot_var:
         test_tasarim(c)
         test_ekson_secimi(c)
+        test_atlama_sinir_ayari(c)
         test_rna_degerlendirme(c)
         test_amplikon(c)
         test_3uc_gc_siniri(c)

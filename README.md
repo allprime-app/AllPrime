@@ -46,7 +46,7 @@ diziyi almak için Ensembl REST servisine sorgu gönderir.
 4. **⚙ Ayarlar › Veri dosyaları ve genom** bölümünden kullanacağınız genom derlemesini indirin
    (her derleme yaklaşık 3 GB; kaynağı Ensembl).
 
-Ayrıntılı kurulum ve kullanım: [KURULUM.txt](KURULUM.txt).
+Ayrıntılı kurulum ve kullanım: [KURULUM.txt](KURULUM.txt) (İngilizcesi: [USER_GUIDE.txt](USER_GUIDE.txt)).
 
 ### Kullanım amacı
 
@@ -117,7 +117,7 @@ Ensembl REST service only to fetch the required sequence.
 4. In **⚙ Settings › Data files and genome**, download the genome assembly you need
    (about 3 GB per assembly; source: Ensembl).
 
-The detailed installation and user guide is [KURULUM.txt](KURULUM.txt) (in Turkish).
+The detailed installation and user guide is [USER_GUIDE.txt](USER_GUIDE.txt) (Turkish: [KURULUM.txt](KURULUM.txt)).
 
 ### Intended use
 

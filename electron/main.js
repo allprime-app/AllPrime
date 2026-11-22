@@ -14,6 +14,8 @@ const fs = require("fs");
 const crypto = require("crypto");
 // Favoriler: secilen ciftlerin kunyesi, yalniz bu bilgisayarda (userData\favoriler.json)
 const favoriler = require("./favoriler");
+// Sag tik menusu sablonu (Kes / Kopyala / Yapistir / Tumunu sec)
+const sagTik = require("./sagTik");
 
 // Motor anahtari: her acilista yeni. Motora ALLPRIME_TOKEN ile, arayuze preload ile
 // verilir; motor anahtarsiz istegi reddeder. Boylece tarayicida acik bir site
@@ -483,6 +485,13 @@ function createWindow() {
       nodeIntegration: false,
       zoomFactor: kayitliBoyut(),     // arayuz boyutu: onay ekrani dahil her sayfada
     },
+  });
+  // Sag tik menusu: Electron'da varsayilan yoktur, fareyle kopyalama / yapistirma calismiyordu.
+  // Yazi kutusunda Kes / Kopyala / Yapistir / Tumunu sec, secili metinde Kopyala; baska yerde
+  // menu acilmaz. Dil o anki kayitli tercihtir. Bilgilendirme ekraninda da calisir.
+  mainWindow.webContents.on("context-menu", (_e, p) => {
+    const ogeler = sagTik.sablon(p, L);
+    if (ogeler.length) Menu.buildFromTemplate(ogeler).popup({ window: mainWindow });
   });
   // Varsayilan menu yok (app.whenReady): yakinlastirma kisayollari Ayarlar'daki adimlari
   // kullanir, secim kaydedilir ve Ayarlar'da gorunur. Onay ekraninda da calisir.

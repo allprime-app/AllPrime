@@ -1,5 +1,6 @@
 ALLPRIME - PRIMER TASARIM ARACI
 ===============================
+(English version of this guide: USER_GUIDE.txt)
 
 SİSTEM GEREKSİNİMİ
 ------------------
@@ -190,8 +191,10 @@ RNA · cDNA sekmesi
                            İntronik konumlar (c.123+45) mRNA'da bulunmadığı için
                            kabul edilmez; onlar için DNA sekmesini kullanın.
 
-   - Ekson atlama testi  : Atlanacak eksonların iki yanındaki eksonlara primer
-                           konur. Transkript kodunu girince eksonlar düğme olarak
+   - Ekson atlama testi  : Atlanacak eksonların iki yanında, ürün boyu aralığına
+                           ve primer koşullarına uyan eksonlara primer konur (her
+                           zaman en yakın komşu ekson olmayabilir; kartta yazar).
+                           Transkript kodunu girince eksonlar düğme olarak
                            çıkar: tıklayarak seçin (Shift+tıklama aralık seçer) ya
                            da kutuya yazın: 5, 4-6 (bitişik), 4,6 (bitişik değil).
                            İlk ve son ekson seçilemez. Normal transkript uzun,
@@ -206,6 +209,20 @@ RNA · cDNA sekmesi
 
 RNA modunda her çift için gDNA'daki ürün boyu da gösterilir; genomik DNA
 kontaminasyonunu jelde ayırt etmek için kullanılır.
+
+İki tasarım tipinde de "Primer ekson sınırının üzerine otursun" kutusu vardır
+(varsayılan kapalı). Açıkken primerlerden biri bir ekson-ekson sınırına oturur ve
+genomik DNA'ya bağlanmaz; primer seçimi daraldığı için bazen çift çıkmaz, program
+bunu söyler. Ekson atlama testinde bu primer atlanacak eksonlara komşu olmayan bir
+sınıra konur: normal ve atlanmış bant yine birlikte görülür. gDNA ürünü çoğalabilecek
+kadar kısaysa kullanışlıdır.
+
+Primerlerden biri ekson sınırını yeterince aşıyorsa o çift genomik DNA'dan ürün vermez:
+kartta ve Değerlendir'in RNA modunda gDNA boyu yerine "çoğalmaz" yazar, CSV'de gDNA
+sütunu boş kalır. "Yeterince" tasarım kartlarında sınırın 3' tarafında en az 4, 5'
+tarafında en az 7 baz demektir (kutu açıkken her çift, kapalıyken bazı çiftler böyledir);
+Değerlendir'de sınırın iki yanında en az 4'er baz aranır. Sınıra yalnızca bir iki bazla
+değen primer genomik DNA'ya bağlanabilir; o çiftte gDNA boyu yazılmaya devam eder.
 
 Dizi sekmesi
    Genom veya transkript gerekmez; diziyi doğrudan yapıştırırsınız. FASTA başlığı,

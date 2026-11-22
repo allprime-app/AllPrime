@@ -60,7 +60,7 @@ CORS(app, origins=["file://"], allow_headers=["Content-Type", ANAHTAR_BASLIGI])
 # Motor surumu. electron/package.json ile AYNI tutulmali; arayuz acilista
 # karsilastirip uyusmazlikta uyarir. Asil kontrol ise /health'teki uc listesi:
 # arayuz ihtiyac duydugu her ucun motorda var olup olmadigina bakar.
-SURUM = "1.0.0"
+SURUM = "1.1.3"
 
 
 @app.before_request
