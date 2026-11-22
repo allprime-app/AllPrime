@@ -601,8 +601,9 @@ Hata bildirirken hasta adı ya da kimliği gibi kişisel veri göndermeyin; prog
 sürüm numarasını ve hatayı veren girdiyi yazmanız yeterlidir.
 
 Çalışmanızda AllPrime'ı kullandıysanız lütfen atıf yapın. Önerilen biçim:
-  Kılınç E. AllPrime: varyanta özgü primer tasarım aracı (kullandığınız sürüm). 2026.
-  https://allprime-app.github.io/
+  Kılınç E. AllPrime: a desktop program for variant-specific PCR primer design
+  (kullandığınız sürüm). Zenodo; 2026. https://doi.org/10.5281/zenodo.24444832
+Bu DOI bütün sürümleri kapsar ve her zaman en son sürüme gider.
 
 
 LİSANS VE KAYNAK KOD

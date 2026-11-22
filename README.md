@@ -58,6 +58,8 @@ kullanılmadan önce laboratuvarda doğrulanmalıdır. Program hiçbir garanti o
 Çalışmanızda AllPrime'ı kullandıysanız lütfen atıf yapın; bilgiler [CITATION.cff](CITATION.cff)
 dosyasındadır (GitHub'da sağ üstteki "Cite this repository" düğmesi).
 
+DOI (bütün sürümler; her zaman en son sürüme gider): [10.5281/zenodo.24444832](https://doi.org/10.5281/zenodo.24444832)
+
 ### Lisans
 
 AllPrime © 2026 Eren Kılınç. Program GNU GPL sürüm 2 ya da (isteğinize göre) daha sonraki bir sürümü
@@ -128,6 +130,8 @@ validated in the laboratory before use. The program comes with no warranty.
 
 If you use AllPrime in your work, please cite it; see [CITATION.cff](CITATION.cff)
 (the "Cite this repository" button on GitHub).
+
+DOI (all versions; always resolves to the latest): [10.5281/zenodo.24444832](https://doi.org/10.5281/zenodo.24444832)
 
 ### License
 

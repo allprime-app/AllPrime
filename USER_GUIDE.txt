@@ -637,8 +637,9 @@ When reporting a bug do not send personal data such as a patient name or identif
 the program's version number and the input that gave the error are enough.
 
 If you use AllPrime in your work, please cite it. Suggested form:
-  Kılınç E. AllPrime: a variant-specific primer design tool (the version you used). 2026.
-  https://allprime-app.github.io/
+  Kılınç E. AllPrime: a desktop program for variant-specific PCR primer design
+  (the version you used). Zenodo; 2026. https://doi.org/10.5281/zenodo.24444832
+This DOI covers all versions and always resolves to the latest one.
 
 
 LICENCE AND SOURCE CODE
