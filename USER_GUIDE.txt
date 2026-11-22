@@ -39,7 +39,8 @@ INSTALLATION
 ------------
 1. Copy this whole folder to the computer (for example C:\AllPrime\).
 
-   IMPORTANT: Extract / copy the folder to a place CLOSE TO THE DRIVE ROOT.
+   IMPORTANT: Extract / copy the folder to a place with a SHORT PATH; avoid
+   deeply nested folders.
    The deepest file path inside the program is 142 characters; because of the
    Windows 260-character limit, extracting into a very deep folder (for example
    Desktop\New folder\Backup\...) gives a "path too long" error and files go missing.

@@ -39,7 +39,7 @@ diziyi almak için Ensembl REST servisine sorgu gönderir.
 ### İndirme ve kurulum
 
 1. [Sürümler (Releases)](../../releases/latest) sayfasından `AllPrime-<sürüm>-win-x64.zip` dosyasını indirin.
-2. Zip'i diskin köküne yakın bir klasöre açın (örneğin `C:\AllPrime\`).
+2. Zip'i kısa yollu bir klasöre açın (örneğin `C:\AllPrime\`); iç içe çok sayıda klasörün altına açmayın.
 3. `AllPrime.exe` dosyasını çalıştırın. Program imzalı olmadığı için Windows ilk açılışta bir uyarı gösterebilir.
    İlk açılışta pencerenin gelmesi 20–50 saniye sürebilir; bu sırada ekranda bir şey görünmez.
    Sonraki açılışlar birkaç saniye sürer.
@@ -110,7 +110,7 @@ Ensembl REST service only to fetch the required sequence.
 ### Download and installation
 
 1. Download `AllPrime-<version>-win-x64.zip` from the [Releases](../../releases/latest) page.
-2. Extract it to a folder close to the drive root (for example `C:\AllPrime\`).
+2. Extract it to a folder with a short path (for example `C:\AllPrime\`); avoid deeply nested folders.
 3. Run `AllPrime.exe`. The program is not code-signed, so Windows may show a warning on first launch.
    On first launch the window may take 20–50 seconds to appear, with nothing on screen meanwhile.
    Later launches take a few seconds.

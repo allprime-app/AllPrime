@@ -38,7 +38,8 @@ KURULUM
 -------
 1. Bu klasörün tamamını bilgisayara kopyalayın (örn. C:\AllPrime\).
 
-   ÖNEMLİ: Klasörü DİSKİN KÖKÜNE YAKIN bir yere açın/kopyalayın.
+   ÖNEMLİ: Klasörü KISA YOLLU bir yere açın/kopyalayın; iç içe çok sayıda
+   klasörün altına koymayın.
    Program içindeki en derin dosya yolu 142 karakter; Windows'un 260 karakter
    sınırı nedeniyle çok derin bir klasöre (örn. Masaüstü\Yeni klasör\Yedek\...)
    açarsanız "yol çok uzun" hatası alır ve dosyalar eksik çıkar.
