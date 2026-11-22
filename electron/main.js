@@ -16,6 +16,8 @@ const crypto = require("crypto");
 const favoriler = require("./favoriler");
 // Sag tik menusu sablonu (Kes / Kopyala / Yapistir / Tumunu sec)
 const sagTik = require("./sagTik");
+// Motorun acilisini bekleme ve acilirken kapanirsa yeniden baslatma
+const motorBekle = require("./motorBekle");
 
 // Motor anahtari: her acilista yeni. Motora ALLPRIME_TOKEN ile, arayuze preload ile
 // verilir; motor anahtarsiz istegi reddeder. Boylece tarayicida acik bir site
@@ -266,6 +268,8 @@ function resolvePython() {
 let BACKEND_KOMUT = "";
 let BACKEND_HATA = null;
 let BACKEND_KOD = null;
+let BACKEND_DENEME = 0;                // motor kac kez baslatildi (acilirken kapanirsa yeniden denenir)
+let BACKEND_KOK = "";                  // uygulama klasoru (tani metni icin)
 const BACKEND_CIKTI = [];
 
 function ciktiEkle(etiket, veri) {
@@ -275,7 +279,15 @@ function ciktiEkle(etiket, veri) {
   while (BACKEND_CIKTI.length > 40) BACKEND_CIKTI.shift();
 }
 
-function startBackend() {
+function startBackend(deneme = 1) {
+  // Her deneme temiz baslar: onceki denemenin hatasi / cikis kodu yenisini "bitti" gostermesin
+  BACKEND_DENEME = deneme;
+  BACKEND_HATA = null;
+  BACKEND_KOD = null;
+  if (deneme > 1) {
+    BACKEND_CIKTI.push("--- " + deneme + L(". deneme ---", ". attempt ---"));
+    console.log("[AllPrime] motor acilirken kapandi; yeniden baslatiliyor (deneme " + deneme + ")");
+  }
   const { cmd, args, cwd } = resolvePython();
   // Motora UYGULAMA KLASORUNU soyle. Kaynaktan calisirken motor kendini
   // backend\.venv icinde gorup yukari dogru arayarak "AllPrime\genomes"
@@ -283,6 +295,7 @@ function startBackend() {
   // silinince genomlar "yok" gorunuyordu. ALLPRIME_APP_ROOT ile bu belirsizlik biter.
   const appRoot = path.dirname(app.getPath("exe"));
   const env = Object.assign({}, process.env, { ALLPRIME_APP_ROOT: appRoot, ALLPRIME_TOKEN: TOKEN });
+  BACKEND_KOK = appRoot;
   BACKEND_KOMUT = [cmd].concat(args).join(" ");
   console.log("[AllPrime] uygulama klasoru (ALLPRIME_APP_ROOT):", appRoot);
   console.log("[AllPrime] motor komutu:", BACKEND_KOMUT);
@@ -305,23 +318,34 @@ function startBackend() {
     return;
   }
 
+  let surec;
   try {
-    pyProc = spawn(cmd, args, { cwd, env, windowsHide: true });
+    surec = spawn(cmd, args, { cwd, env, windowsHide: true });
   } catch (e) {
     BACKEND_HATA = e;
     return;
   }
+  pyProc = surec;
+  // Olaylar yalnizca GUNCEL surec icin durum yazar: yeniden denemede eski surecin gec gelen
+  // olayi yeni denemeyi "kapandi" gostermesin.
   // BU DINLEYICI SART: yoksa spawn hatasi yakalanmayan bir olay olarak kaybolur
-  pyProc.on("error", (e) => {
-    BACKEND_HATA = e;
+  surec.on("error", (e) => {
+    if (pyProc === surec) BACKEND_HATA = e;
     console.log("[py] baslatilamadi:", e.code, e.message);
   });
-  pyProc.stdout.on("data", (d) => { ciktiEkle("", d); console.log("[py]", String(d)); });
-  pyProc.stderr.on("data", (d) => { ciktiEkle("! ", d); console.log("[py:err]", String(d)); });
-  pyProc.on("close", (code) => {
-    BACKEND_KOD = code;
+  surec.stdout.on("data", (d) => { ciktiEkle("", d); console.log("[py]", String(d)); });
+  surec.stderr.on("data", (d) => { ciktiEkle("! ", d); console.log("[py:err]", String(d)); });
+  surec.on("close", (code) => {
+    if (pyProc === surec) BACKEND_KOD = code;
     console.log("[py] kapandi, kod:", code);
   });
+}
+
+// Motor sureci ne durumda (motorBekle icin): "" yasiyor, "kapandi", "baslatilamadi"
+function motorDurumu() {
+  if (BACKEND_HATA) return "baslatilamadi";
+  if (BACKEND_KOD !== null) return "kapandi";
+  return "";
 }
 
 function baslatmaTanisi() {
@@ -367,6 +391,39 @@ function baslatmaTanisi() {
     s.push("");
     s.push(L("Motor beklenmedik şekilde kapandı. Çıkış kodu: ",
              "The engine exited unexpectedly. Exit code: ") + BACKEND_KOD);
+    if (BACKEND_DENEME > 1) {
+      s.push(L("Motor " + BACKEND_DENEME + " kez başlatıldı; her seferinde kapandı.",
+               "The engine was started " + BACKEND_DENEME + " times; it exited every time."));
+    }
+    // Olcum (2026-11-22): motorun bir dosyasi eksikken ya da yarimken tam bu iki hata cikiyor
+    // (ust veri klasoru yokken cikis 1 + PackageNotFoundError; yarim bir ikili dosyada
+    // 3221225477). Zip'te AllPrime.exe 2., motorun son dosyalari 265.-268. siradadir: acma
+    // bitmeden calistirilirsa motor eksik kalir.
+    s.push("");
+    s.push(...L([
+      "Motorun dosyaları eksik, yarım ya da o anda okunamıyor olabilir:",
+      "  - Zip'in açılması bitmeden program çalıştırıldıysa: açma bitince",
+      "    yeniden deneyin ya da zip'i baştan, tamamen açın.",
+      "  - Zip'i doğrudan Yerel Disk (C:) içine yeniden açıp programı oradan",
+      "    (C:\\AllPrime) çalıştırın. Bozulan klasörü başka yere taşımak düzeltmez.",
+    ], [
+      "The engine's files may be missing, incomplete or unreadable right now:",
+      "  - If the program was run before the zip finished extracting: try again",
+      "    when extraction is done, or extract the zip again, completely.",
+      "  - Extract the zip again, directly onto the local disk (C:), and run the",
+      "    program from there (C:\\AllPrime). Moving the broken folder elsewhere",
+      "    does not fix it.",
+    ]));
+    if (/[\\/]OneDrive[^\\/]*[\\/]/i.test(BACKEND_KOK + path.sep)) {
+      s.push("");
+      s.push(...L([
+        "Bu klasör OneDrive ile eşitlenen bir yerde görünüyor. Böyle bir klasöre",
+        "açılan kopyada program açılmayabiliyor.",
+      ], [
+        "This folder appears to be in a location synced by OneDrive. A copy",
+        "extracted into such a folder may fail to start.",
+      ]));
+    }
   }
   if (BACKEND_CIKTI.length) {
     s.push("");
@@ -438,34 +495,29 @@ function baslatmaTanisi() {
 // ragmen "baslatilamadi" hatasi goruyordu.
 const BEKLEME_MS = 180000;
 
-function waitForBackend(toplamMs = BEKLEME_MS) {
-  const ARALIK = 500;
-  return new Promise((resolve, reject) => {
-    const bitis = Date.now() + toplamMs;
-    let sayac = 0;
-    const tryOnce = () => {
-      const kalan = bitis - Date.now();
-      const req = http.get(
-        { host: "127.0.0.1", port: PORT, path: "/health", timeout: 1000,
-          headers: { [ANAHTAR_BASLIGI]: TOKEN } },
-        (res) => {
-          res.resume();
-          console.log("[AllPrime] motor hazir (" + ((toplamMs - kalan) / 1000).toFixed(1) + " sn)");
-          resolve(true);
-        }
-      );
-      const tekrar = () => {
-        if (kalan <= 0) return reject(new Error("Motor zaman asimi"));
-        if (++sayac % 20 === 0) {
-          console.log("[AllPrime] motor bekleniyor... " + Math.round((toplamMs - kalan) / 1000) + " sn");
-        }
-        setTimeout(tryOnce, ARALIK);
-      };
-      req.on("error", tekrar);
-      req.on("timeout", () => { req.destroy(); tekrar(); });
-    };
-    tryOnce();
+// Motora tek bir saglik istegi (motorBekle icin): cevap geldiyse cb(true), gelmediyse cb(false).
+// cb bir istek icin BIR KEZ cagrilir: zaman asiminda destroy() ayrica "error" da uretir.
+function saglikIstegi(cb) {
+  let bildirildi = false;
+  const son = (v) => { if (!bildirildi) { bildirildi = true; cb(v); } };
+  const req = http.get(
+    { host: "127.0.0.1", port: PORT, path: "/health", timeout: 1000,
+      headers: { [ANAHTAR_BASLIGI]: TOKEN } },
+    (res) => { res.resume(); son(true); }
+  );
+  req.on("error", () => son(false));
+  req.on("timeout", () => { req.destroy(); son(false); });
+}
+
+// Motoru baslatir ve acilisini bekler. Motor acilirken kapanirsa beklemez: en cok 3 kez
+// yeniden baslatir, yine olmazsa hemen hata verir (motorBekle.js).
+async function motoruBaslatVeBekle() {
+  const s = await motorBekle.baslatVeBekle({
+    baslat: startBackend, istek: saglikIstegi, durum: motorDurumu, toplamMs: BEKLEME_MS,
+    gunluk: (ms) => console.log("[AllPrime] motor bekleniyor... " + Math.round(ms / 1000) + " sn"),
   });
+  console.log("[AllPrime] motor hazir (" + (s.gecenMs / 1000).toFixed(1) + " sn)"
+              + (s.deneme > 1 ? " - " + s.deneme + ". denemede" : ""));
 }
 
 function createWindow() {
@@ -674,9 +726,8 @@ app.whenReady().then(async () => {
     PORT = 5077;                       // son care: eski sabit port
     console.log("[AllPrime] bos port bulunamadi, 5077 kullaniliyor:", e.message);
   }
-  startBackend();
   try {
-    await waitForBackend();
+    await motoruBaslatVeBekle();
   } catch (e) {
     // Genel bir cumle yerine NE OLDUGUNU soyle: hangi komut denendi, isletim
     // sistemi ne dedi, motor ne yazdi. Baska bir bilgisayarda tek ipucu bu.

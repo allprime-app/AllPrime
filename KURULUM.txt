@@ -36,14 +36,21 @@ tasarımları sorunsuz çalıştı, genom taraması daha uzun sürdü. Orada sü
 
 KURULUM
 -------
-1. Bu klasörün tamamını bilgisayara kopyalayın (örn. C:\AllPrime\).
+1. Zip'i doğrudan Yerel Disk (C:) içine açın; program C:\AllPrime\ klasöründe
+   olur. (Programı başka bir bilgisayara taşıyacaksanız klasörün tamamını yine
+   doğrudan C: içine kopyalayın.)
 
-   ÖNEMLİ: Klasörü KISA YOLLU bir yere açın/kopyalayın; iç içe çok sayıda
-   klasörün altına koymayın.
+   ÖNEMLİ: Masaüstü ya da Belgeler gibi OneDrive ile eşitlenen bir klasöre
+   açmayın: böyle bir klasöre açılan kopyada program açılmayabilir; ayrıca
+   genomlar bu klasöre iner (yaklaşık 6 GB) ve eşitleme bunları da buluta
+   yüklemeye çalışır. Bozulan kopyayı başka yere taşımak düzeltmez; zip'i
+   doğrudan Yerel Disk (C:) içine yeniden açın.
+   Zip'in açılması tamamen bitmeden AllPrime.exe'yi çalıştırmayın; dosyalar
+   eksikken program açılamaz.
+   İç içe çok sayıda klasörün altına da açmayın.
    Program içindeki en derin dosya yolu 142 karakter; Windows'un 260 karakter
    sınırı nedeniyle çok derin bir klasöre (örn. Masaüstü\Yeni klasör\Yedek\...)
    açarsanız "yol çok uzun" hatası alır ve dosyalar eksik çıkar.
-   C:\AllPrime\ gibi kısa bir yol her zaman güvenlidir.
 2. Veri dosyalarını edinin. İKİ YOL VAR:
 
    a) UYGULAMA İÇİNDEN İNDİRİN (kolay yol)

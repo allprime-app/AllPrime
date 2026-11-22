@@ -44,6 +44,7 @@ $dosyalar = @(
     @{ k = "electron\preload.js";            h = "preload.js" },
     @{ k = "electron\favoriler.js";          h = "favoriler.js" },    # main.js require eder
     @{ k = "electron\sagTik.js";             h = "sagTik.js" },       # main.js require eder
+    @{ k = "electron\motorBekle.js";         h = "motorBekle.js" },   # main.js require eder
     @{ k = "electron\package.json";          h = "package.json" },   # SURUM buradan okunur
     @{ k = "electron\renderer\index.html";   h = "renderer\index.html" },
     @{ k = "electron\renderer\app.js";       h = "renderer\app.js" },

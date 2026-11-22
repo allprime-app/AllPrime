@@ -37,14 +37,21 @@ and memory were not measured there; values that were not measured are marked as 
 
 INSTALLATION
 ------------
-1. Copy this whole folder to the computer (for example C:\AllPrime\).
+1. Extract the zip directly onto the local disk (C:); the program will be in
+   C:\AllPrime\. (To move the program to another computer, copy the whole
+   folder, again directly onto C:.)
 
-   IMPORTANT: Extract / copy the folder to a place with a SHORT PATH; avoid
-   deeply nested folders.
+   IMPORTANT: Do not extract it into a folder synced by OneDrive, such as
+   Desktop or Documents: a copy extracted there may fail to start; in addition
+   the genomes are downloaded into this folder (about 6 GB) and syncing would
+   try to upload them as well. Moving a broken copy elsewhere does not fix it;
+   extract the zip again, directly onto the local disk (C:).
+   Do not run AllPrime.exe before the zip has finished extracting; the program
+   cannot start while files are missing.
+   Do not extract it into deeply nested folders either.
    The deepest file path inside the program is 142 characters; because of the
    Windows 260-character limit, extracting into a very deep folder (for example
    Desktop\New folder\Backup\...) gives a "path too long" error and files go missing.
-   A short path such as C:\AllPrime\ is always safe.
 2. Get the data files. THERE ARE TWO WAYS:
 
    a) DOWNLOAD THEM FROM INSIDE THE APPLICATION (the easy way)

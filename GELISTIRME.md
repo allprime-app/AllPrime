@@ -324,6 +324,29 @@ göre (`L`). Bilgilendirme ekranında da çalışır (aynı pencere).
 
 Doğrulama: `test_smoke.py: test_sag_tik_menusu` (şablon node ile çağrılır).
 
+## Motorun açılışını bekleme (`electron/motorBekle.js`, v1.1.4)
+
+`main.js` motoru başlatır ve `/health` cevap verene kadar bekler. Bekleme `motorBekle.js`'tedir
+(Electron'a bağlı değil; node ile sınanır):
+
+- **Motor açılırken kapanırsa bekleme hemen biter.** Motor süreci bittiğinde (`close`) ya da hiç
+  başlatılamadığında (`error`) `motorDurumu()` bunu bildirir; süre dolması beklenmez. Ölçüm
+  (motoru açılışta ölen temiz kopya): hata kutusu v1.1.3'te 187–202. saniyede geliyordu.
+- **Kapanan motor en çok 3 kez başlatılır** (denemeler arası 1,5 sn). Dosyalara o an
+  erişilememesi gibi geçici bir durum sonraki denemede geçmiş olabilir. Zaman aşımı (motor
+  yaşıyor ama yavaş; 180 sn) ve "başlatılamadı" (dosya yok, izin yok) yeniden denenmez.
+- **Tanı metni** kaç kez denendiğini, dosyaların eksik / yarım olabileceğini (zip açılırken
+  çalıştırma) ve klasör OneDrive altındaysa bunu söyler. Ölçüm: `_internal` altındaki
+  `werkzeug-*.dist-info` yokken çıkış 1 + `PackageNotFoundError`; ikinci yarısı boş bir `.pyd`
+  ile çıkış 3221225477 (0xC0000005). Gözlem (2026-11-22, başka bilgisayar): OneDrive ile
+  eşitlenen Masaüstü'ne açılan kopyada motor bu iki hatayla açılmadı; klasörü `C:\`'ye taşımak
+  düzeltmedi, zip'i doğrudan `C:\`'ye açmak düzeltti. Kılavuzlar bu yüzden eşitlenen klasöre
+  açmamayı söyler.
+- **Paket:** `motorBekle.js` hem `kurulu-guncelle.ps1` listesinde hem `package.json`
+  `build.files`'ta olmalı (yoksa `main.js` açılışta düşer).
+
+Doğrulama: `test_smoke.py: test_motor_acilirken_kapanirsa`.
+
 ---
 
 ## Primer genin neresinde (`transcripts.konum_bolgesi`)
@@ -766,7 +789,7 @@ AllPrime-kaynak/
 │  ├─ requirements.txt        çalıştırma bağımlılıkları
 │  └─ requirements-build.txt  sadece derleme (PyInstaller)
 ├─ electron/                  masaüstü arayüz
-│  ├─ main.js, preload.js, favoriler.js, sagTik.js
+│  ├─ main.js, preload.js, favoriler.js, sagTik.js, motorBekle.js
 │  ├─ renderer/               index.html, app.js, style.css
 │  └─ sidecar/                derlenmiş Python sunucusu (build.ps1 üretir)
 ├─ annotations/               transkript tabloları — kaynak nüsha (~18 MB)

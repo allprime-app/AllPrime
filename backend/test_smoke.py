@@ -3755,8 +3755,8 @@ def test_bilgilendirme_ekrani(c):
        and "consent-accept" not in main_k and 'ipcRenderer.invoke("notice-ack"' in preload
        and "declineConsent" not in preload and "acceptConsent" not in preload)
     hazir = main_k.find("app.whenReady()")
-    ok("motor bildirimden bagimsiz baslar (startBackend, pencere / bildirim sayfasindan once)",
-       hazir >= 0 and 0 <= main_k.find("startBackend();", hazir) < main_k.find("createWindow();", hazir)
+    ok("motor bildirimden bagimsiz baslar (motoruBaslatVeBekle, pencere / bildirim sayfasindan once)",
+       hazir >= 0 and 0 <= main_k.find("await motoruBaslatVeBekle();", hazir) < main_k.find("createWindow();", hazir)
        and 'noticeSeen() ? "index.html" : "consent.html"' in main_k)
     ok("Ayarlar > Lisans ve sorumluluk ayni kaynaktan (getTerms) okunur",
        'getTerms(LANG)' in oku("renderer/app.js") and 'readFileSync(path.join(__dirname, "renderer", file)' in main_k)
@@ -4944,6 +4944,93 @@ def test_sag_tik_menusu():
     ok("  ...Ingilizce arayuzde Cut / Copy / Paste / Select all",
        etiket(d["secimEn"]) == ["Copy"] and etiket(d["kutuEn"]) == ["Cut", "Copy", "Paste", None, "Select all"])
     ok("secim yokken (ya da yalniz bosluk) ve bilgi gelmediginde menu yok", d["bos"] == [] and d["eksik"] == [])
+
+
+def test_motor_acilirken_kapanirsa():
+    """NOBETCI (v1.1.4): kullanici 2026-11-22, baska bilgisayar: "program tiklayinca ya acilmiyor ya
+    cok gec aciliyor". Motor acilirken kapaniyordu (cikis 1, werkzeug ust verisi bulunamadi; cikis
+    3221225477) ve main.js bunu fark etmiyordu: bekleme yalniz sure dolunca (180 sn) bitiyordu.
+    Olcum (v1.1.3, motoru acilista olen temiz kopya): hata kutusu 187-202. saniyede. Bekleme
+    motorBekle.js'te (Electron'suz, burada node ile cagrilir): motor kapaninca hemen biter, motor
+    en cok 3 kez baslatilir; zaman asimi ve "baslatilamadi" yeniden denenmez."""
+    import subprocess
+    baslik("Motor acilirken kapanirsa bekleme hemen biter, motor yeniden denenir (v1.1.4)")
+    kok = os.path.join(BURASI, "..")
+    oku = lambda *a: open(os.path.join(kok, *a), encoding="utf-8").read()
+    ham = oku("electron", "main.js")
+    mj = _yorumsuz_js(ham)
+    govde = lambda ad: (lambda i: mj[i:mj.find("\n}", i)] if i >= 0 else "")(mj.find("function " + ad + "("))
+    ok("main.js acilisi motorBekle.js ile bekler; sure dolana kadar bekleyen kendi dongusu kalmadi",
+       'require("./motorBekle")' in mj and "motorBekle.baslatVeBekle({" in govde("motoruBaslatVeBekle")
+       and "baslat: startBackend" in mj and "istek: saglikIstegi" in mj and "durum: motorDurumu" in mj
+       and "function waitForBackend" not in mj)
+    ok("motor durumu: surec bittiyse 'kapandi', hic acilamadiysa 'baslatilamadi', yasiyorsa bos",
+       'if (BACKEND_HATA) return "baslatilamadi";' in govde("motorDurumu")
+       and 'if (BACKEND_KOD !== null) return "kapandi";' in govde("motorDurumu") and 'return "";' in govde("motorDurumu"))
+    ok("her deneme temiz baslar; eski surecin gec gelen olayi yeni denemeye yazmaz",
+       "BACKEND_HATA = null;" in govde("startBackend") and "BACKEND_KOD = null;" in govde("startBackend")
+       and "if (pyProc === surec) BACKEND_KOD = code;" in govde("startBackend")
+       and "if (pyProc === surec) BACKEND_HATA = e;" in govde("startBackend"))
+    ok("saglik istegi bir istek icin bir kez bildirir (zaman asiminda destroy ayrica error uretir)",
+       "if (!bildirildi)" in govde("saglikIstegi") and govde("saglikIstegi").count("son(false)") == 2)
+    ok("tani metni: kac kez denendigi, eksik / yarim dosya ipucu (iki dilde), OneDrive altindaysa uyari",
+       '"Motor " + BACKEND_DENEME + " kez başlatıldı' in ham and '"The engine was started " + BACKEND_DENEME' in ham
+       and "Zip'in açılması bitmeden program çalıştırıldıysa" in ham
+       and "before the zip finished extracting" in ham and "OneDrive[^" in ham and "BACKEND_KOK + path.sep" in ham)
+    ok("  ...motorBekle.js kurulu-guncelle listesinde ve paket dosyalarinda (yoksa kurulu uygulama acilmaz)",
+       'k = "electron\\motorBekle.js"' in oku("kurulu-guncelle.ps1") and '"motorBekle.js"' in oku("electron", "package.json"))
+    mod = os.path.abspath(os.path.join(kok, "electron", "motorBekle.js"))
+    if not os.path.exists(mod):
+        return ok("electron/motorBekle.js var", False)
+    node = shutil.which("node")
+    if not node:
+        return atla("motorBekle.js davranisi", "node yok")
+    betik = (
+        "const m = require(%s);"
+        "(async () => { const S = {};"
+        "const kos = async (ad, sec) => { const t0 = Date.now(), b = [];"
+        "  try { const r = await m.baslatVeBekle(Object.assign({ baslat: (d) => b.push(d), toplamMs: 60000 }, sec(b)));"
+        "    S[ad] = { acildi: true, deneme: r.deneme, baslatma: b, ms: Date.now() - t0 }; }"
+        "  catch (e) { S[ad] = { acildi: false, neden: e.neden, deneme: e.deneme, baslatma: b, ms: Date.now() - t0 }; } };"
+        "const yok = (cb) => setTimeout(() => cb(false), 5);"
+        # motor her denemede hemen kapaniyor; araliklar VARSAYILAN (gercek uygulamadaki gibi)
+        "await kos('olu', () => ({ istek: yok, durum: () => 'kapandi' }));"
+        # saglam motor: ucuncu yoklamada cevap verir
+        "let n = 0;"
+        "await kos('saglam', () => ({ istek: (cb) => setTimeout(() => cb(++n >= 3), 5), durum: () => '', aralikMs: 20 }));"
+        # ilk denemede kapaniyor, ikincide aciliyor
+        "await kos('ikinci', (b) => ({ istek: (cb) => setTimeout(() => cb(b.length >= 2), 5),"
+        "  durum: () => (b.length < 2 ? 'kapandi' : ''), aralikMs: 20, araMs: 50 }));"
+        # yasiyor ama cevap vermiyor: zaman asimi
+        "await kos('yavas', () => ({ istek: yok, durum: () => '', toplamMs: 300, aralikMs: 20 }));"
+        # hic baslatilamadi (dosya yok / izin yok)
+        "await kos('yok', () => ({ istek: yok, durum: () => 'baslatilamadi', araMs: 50 }));"
+        # bir sure yasayip yoklama surerken kapaniyor
+        "const t = Date.now();"
+        "await kos('sonra', () => ({ istek: yok, durum: () => (Date.now() - t > 200 ? 'kapandi' : ''), aralikMs: 20, araMs: 50, enCok: 2 }));"
+        "process.stdout.write(JSON.stringify(S)); })();" % json.dumps(mod))
+    r = subprocess.run([node, "-e", betik], capture_output=True, timeout=60)
+    if r.returncode != 0:
+        return ok("motorBekle.js node ile calisir", False, r.stderr.decode("utf-8", "replace").strip()[-300:])
+    d = json.loads(r.stdout.decode("utf-8"))
+    ok("motor her seferinde kapaniyorsa: 3 kez baslatilir, sonra 'kapandi' ile biter",
+       d["olu"]["acildi"] is False and d["olu"]["neden"] == "kapandi" and d["olu"]["baslatma"] == [1, 2, 3]
+       and d["olu"]["deneme"] == 3, str(d["olu"]))
+    ok("  ...varsayilan araliklarla 10 saniyeden kisa surer (onceden 180 sn), denemeler arasinda ara var",
+       2500 <= d["olu"]["ms"] < 10000, "%d ms" % d["olu"]["ms"])
+    ok("saglam motor: tek baslatma, cevap gelince biter",
+       d["saglam"]["acildi"] and d["saglam"]["baslatma"] == [1] and d["saglam"]["deneme"] == 1, str(d["saglam"]))
+    ok("ilk denemede kapanan motor ikinci denemede acilirsa uygulama acilir",
+       d["ikinci"]["acildi"] and d["ikinci"]["baslatma"] == [1, 2] and d["ikinci"]["deneme"] == 2, str(d["ikinci"]))
+    ok("motor yasiyor ama cevap vermiyorsa: sure dolunca 'zaman', yeniden baslatma yok",
+       d["yavas"]["acildi"] is False and d["yavas"]["neden"] == "zaman" and d["yavas"]["baslatma"] == [1]
+       and 300 <= d["yavas"]["ms"] < 3000, str(d["yavas"]))
+    ok("motor hic baslatilamadiysa: hemen 'baslatilamadi', yeniden baslatma yok",
+       d["yok"]["acildi"] is False and d["yok"]["neden"] == "baslatilamadi" and d["yok"]["baslatma"] == [1]
+       and d["yok"]["ms"] < 1000, str(d["yok"]))
+    ok("yoklama surerken kapanan motor da fark edilir (sure dolmasi beklenmez)",
+       d["sonra"]["acildi"] is False and d["sonra"]["neden"] == "kapandi" and d["sonra"]["baslatma"] == [1, 2]
+       and d["sonra"]["ms"] < 3000, str(d["sonra"]))
 
 
 def test_v0866_favori_csv_ve_degerlendir(c):
@@ -7520,6 +7607,7 @@ def _testler(c, engine):
     test_v0866_binlik(c, engine, genom_var, annot_var)
     test_v100_sayfa_sureci_cokerse()
     test_sag_tik_menusu()
+    test_motor_acilirken_kapanirsa()
     test_degerlendir_urun_yonu(c)
     test_menu_kisayollari(c)
     test_kurulum_degerlendir(c)
